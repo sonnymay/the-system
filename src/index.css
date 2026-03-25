@@ -1,28 +1,24 @@
 @import "tailwindcss";
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background: #0a0a0f;
-  color: #e2e8f0;
+  background: #08080e;
+  color: #f0f0f5;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   margin: 0;
   min-height: 100vh;
 }
 
-#root {
-  min-height: 100vh;
+#root { min-height: 100vh; }
+
+::selection { background: #8b5cf630; }
+
+::-webkit-scrollbar { width: 0; }
+
+input::placeholder { color: #2a2a38; }
+
+input[type="text"], input[type="email"], input[type="password"] {
+  appearance: none;
 }
-
-::selection {
-  background: #7c3aed40;
-}
-
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a3f; border-radius: 99px; }
-
-input::placeholder { color: #333350; }

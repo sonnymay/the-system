@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { LogOut } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
 import HunterCard from '../components/HunterCard'
@@ -25,35 +24,38 @@ export default function Dashboard() {
       <RankUpOverlay />
       <XpFloats />
 
-      <div className="min-h-screen" style={{ background: '#0a0a0f' }}>
-        {/* Minimal nav */}
-        <header className="sticky top-0 z-30 flex items-center px-5 h-14"
-          style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #111118' }}>
-          <span className="text-sm font-semibold text-white">The System</span>
+      <div className="min-h-screen" style={{ background: '#08080e' }}>
+        {/* Minimal top bar */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-0">
+          <span className="text-xs font-semibold tracking-widest" style={{ color: '#252530' }}>
+            THE SYSTEM
+          </span>
           <button
             onClick={() => supabase.auth.signOut()}
-            className="ml-auto p-2 rounded-lg transition-colors hover:opacity-60"
-            style={{ color: '#555570' }}
-            title="Sign out"
+            className="text-xs transition-opacity hover:opacity-60"
+            style={{ color: '#303040' }}
           >
-            <LogOut size={15} />
+            sign out
           </button>
-        </header>
+        </div>
 
-        <main className="max-w-md mx-auto px-4 py-5 space-y-3 pb-16">
-          {(['card', 'quests', 'tasks'] as const).map((section, i) => (
-            <motion.div
-              key={section}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: i * 0.08 }}
-            >
-              {section === 'card' && <HunterCard />}
-              {section === 'quests' && <DailyQuests />}
-              {section === 'tasks' && <TaskList />}
-            </motion.div>
-          ))}
-        </main>
+        <motion.div
+          className="max-w-md mx-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <HunterCard />
+
+          {/* Divider */}
+          <div className="mx-6 mb-6" style={{ height: 1, background: '#0f0f18' }} />
+
+          <DailyQuests />
+
+          <div className="mx-6 my-6" style={{ height: 1, background: '#0f0f18' }} />
+
+          <TaskList />
+        </motion.div>
       </div>
     </>
   )
