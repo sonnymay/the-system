@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Check, Trash2, ChevronDown, Swords } from 'lucide-react'
+import { Plus, Check, Trash2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { TaskDifficulty } from '../lib/types'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, XP_VALUES } from '../lib/types'
@@ -23,7 +23,6 @@ export default function TaskList() {
 
   const [title, setTitle] = useState('')
   const [difficulty, setDifficulty] = useState<TaskDifficulty>('orc')
-  const [showDiffMenu, setShowDiffMenu] = useState(false)
   const [adding, setAdding] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -43,174 +42,112 @@ export default function TaskList() {
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: '#12121a', border: '1px solid #2a2a3f' }}>
-      {/* Header */}
-      <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #2a2a3f' }}>
-        <Swords size={16} style={{ color: '#7c3aed' }} />
-        <h3 className="font-semibold text-sm text-white">Active Quests</h3>
-        {tasks.length > 0 && (
-          <span className="ml-auto text-xs px-2 py-0.5 rounded-full"
-            style={{ background: '#7c3aed22', color: '#7c3aed' }}>
-            {tasks.length}
-          </span>
-        )}
+    <div className="rounded-3xl overflow-hidden" style={{ background: '#111118', border: '1px solid #1e1e2e' }}>
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid #1e1e2e' }}>
+        <h3 className="text-sm font-semibold text-white">Quests</h3>
       </div>
 
-      {/* Add task form */}
-      <form onSubmit={handleAdd} className="px-5 py-4" style={{ borderBottom: '1px solid #1a1a27' }}>
-        <div className="flex gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="New quest..."
-            className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
-            style={{ background: '#1a1a27', border: '1px solid #2a2a3f', color: '#e2e8f0' }}
-            onFocus={(e) => (e.target.style.borderColor = '#7c3aed')}
-            onBlur={(e) => (e.target.style.borderColor = '#2a2a3f')}
-          />
-
-          {/* Difficulty selector */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowDiffMenu(!showDiffMenu)}
-              className="h-full px-3 rounded-xl text-sm flex items-center gap-1.5 whitespace-nowrap"
-              style={{
-                background: `${DIFFICULTY_COLORS[difficulty]}22`,
-                border: `1px solid ${DIFFICULTY_COLORS[difficulty]}44`,
-                color: DIFFICULTY_COLORS[difficulty],
-              }}
-            >
-              <span>{MONSTER_ICONS[difficulty]}</span>
-              <span className="hidden sm:inline">{DIFFICULTY_LABELS[difficulty]}</span>
-              <ChevronDown size={12} />
-            </button>
-
-            <AnimatePresence>
-              {showDiffMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-10 min-w-36"
-                  style={{ background: '#1a1a27', border: '1px solid #2a2a3f', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}
-                >
-                  {DIFFICULTIES.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => { setDifficulty(d); setShowDiffMenu(false) }}
-                      className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-2.5 transition-colors hover:opacity-80"
-                      style={{
-                        background: difficulty === d ? `${DIFFICULTY_COLORS[d]}22` : 'transparent',
-                        color: DIFFICULTY_COLORS[d],
-                      }}
-                    >
-                      <span>{MONSTER_ICONS[d]}</span>
-                      <span className="font-medium">{DIFFICULTY_LABELS[d]}</span>
-                      <span className="ml-auto text-xs opacity-60">+{XP_VALUES[d]} XP</span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
+      {/* Difficulty picker */}
+      <div className="px-5 pt-4 pb-3 flex gap-2">
+        {DIFFICULTIES.map((d) => (
           <button
-            type="submit"
-            disabled={!title.trim() || adding}
-            className="px-3 py-2.5 rounded-xl transition-all"
+            key={d}
+            onClick={() => setDifficulty(d)}
+            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
             style={{
-              background: title.trim() ? '#7c3aed' : '#2a2a3f',
-              color: 'white',
+              background: difficulty === d ? `${DIFFICULTY_COLORS[d]}20` : 'transparent',
+              color: difficulty === d ? DIFFICULTY_COLORS[d] : '#444460',
+              border: `1px solid ${difficulty === d ? DIFFICULTY_COLORS[d] + '50' : '#1e1e2e'}`,
             }}
           >
-            <Plus size={16} />
+            <span className="block text-base leading-none mb-1">{MONSTER_ICONS[d]}</span>
+            <span>+{XP_VALUES[d]}</span>
           </button>
-        </div>
+        ))}
+      </div>
 
-        <div className="flex gap-1 mt-2 flex-wrap">
-          {DIFFICULTIES.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setDifficulty(d)}
-              className="text-xs px-2 py-0.5 rounded-full transition-all"
-              style={{
-                background: difficulty === d ? `${DIFFICULTY_COLORS[d]}22` : '#1a1a27',
-                color: difficulty === d ? DIFFICULTY_COLORS[d] : '#4b5563',
-                border: `1px solid ${difficulty === d ? DIFFICULTY_COLORS[d] + '44' : '#2a2a3f'}`,
-              }}
-            >
-              {MONSTER_ICONS[d]} {DIFFICULTY_LABELS[d]} +{XP_VALUES[d]}
-            </button>
-          ))}
-        </div>
+      {/* Add task input */}
+      <form onSubmit={handleAdd} className="px-5 pb-4 flex gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={`New ${DIFFICULTY_LABELS[difficulty].toLowerCase()} quest…`}
+          className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none"
+          style={{ background: '#1a1a28', border: '1px solid #252535', color: '#e2e8f0' }}
+          onFocus={(e) => (e.target.style.borderColor = DIFFICULTY_COLORS[difficulty] + '80')}
+          onBlur={(e) => (e.target.style.borderColor = '#252535')}
+        />
+        <button
+          type="submit"
+          disabled={!title.trim() || adding}
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
+          style={{
+            background: title.trim() ? DIFFICULTY_COLORS[difficulty] + '25' : '#1a1a28',
+            border: `1px solid ${title.trim() ? DIFFICULTY_COLORS[difficulty] + '60' : '#252535'}`,
+            color: title.trim() ? DIFFICULTY_COLORS[difficulty] : '#333350',
+          }}
+        >
+          <Plus size={16} />
+        </button>
       </form>
 
       {/* Task list */}
-      <div className="divide-y" style={{ borderColor: '#1a1a27' }}>
+      <div>
         <AnimatePresence initial={false}>
           {tasks.length === 0 ? (
-            <motion.div
+            <motion.p
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="px-5 py-8 text-center"
+              className="px-5 pb-6 text-sm text-center"
+              style={{ color: '#333350' }}
             >
-              <p className="text-sm" style={{ color: '#4b5563' }}>No active quests. Add one above.</p>
-            </motion.div>
+              No active quests
+            </motion.p>
           ) : (
-            tasks.map((task) => (
-              <motion.div
-                key={task.id}
-                layout
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 16, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="px-5 py-3.5 flex items-center gap-3"
-              >
-                {/* Monster icon */}
-                <span className="text-lg flex-shrink-0">{MONSTER_ICONS[task.difficulty as TaskDifficulty]}</span>
-
-                {/* Task title */}
-                <span className="flex-1 text-sm text-white min-w-0 truncate">{task.title}</span>
-
-                {/* XP badge */}
-                <span className="text-xs flex-shrink-0 font-medium px-1.5 py-0.5 rounded"
-                  style={{
-                    background: `${DIFFICULTY_COLORS[task.difficulty as TaskDifficulty]}22`,
-                    color: DIFFICULTY_COLORS[task.difficulty as TaskDifficulty],
-                  }}>
-                  {isPerfectDay ? `${task.xp_value * 2}` : task.xp_value} XP
-                  {isPerfectDay && <span className="ml-0.5 opacity-70">×2</span>}
-                </span>
-
-                {/* Complete button */}
-                <button
-                  onClick={(e) => handleComplete(task.id, e)}
-                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                  style={{ background: '#10b98122', border: '1px solid #10b98144', color: '#10b981' }}
-                  title="Complete quest"
+            tasks.map((task) => {
+              const diff = task.difficulty as TaskDifficulty
+              const xp = isPerfectDay ? task.xp_value * 2 : task.xp_value
+              return (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex items-center gap-3 px-5 py-3"
+                  style={{ borderTop: '1px solid #1a1a28' }}
                 >
-                  <Check size={14} />
-                </button>
+                  <span className="text-base flex-shrink-0">{MONSTER_ICONS[diff]}</span>
 
-                {/* Delete button */}
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                  style={{ background: '#ef444422', border: '1px solid #ef444444', color: '#ef4444' }}
-                  title="Delete quest"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </motion.div>
-            ))
+                  <span className="flex-1 text-sm text-white truncate">{task.title}</span>
+
+                  <span className="text-xs font-medium flex-shrink-0"
+                    style={{ color: DIFFICULTY_COLORS[diff] }}>
+                    +{xp}
+                  </span>
+
+                  <button
+                    onClick={(e) => handleComplete(task.id, e)}
+                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                    style={{ background: '#10b98118', border: '1px solid #10b98140', color: '#10b981' }}
+                  >
+                    <Check size={13} />
+                  </button>
+
+                  <button
+                    onClick={() => deleteTask(task.id)}
+                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center opacity-30 hover:opacity-70 transition-opacity"
+                    style={{ color: '#888' }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </motion.div>
+              )
+            })
           )}
         </AnimatePresence>
       </div>

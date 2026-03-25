@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Check, Trash2, Flame, Target, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Flame, AlertTriangle } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function DailyQuests() {
@@ -12,9 +12,17 @@ export default function DailyQuests() {
 
   const [newText, setNewText] = useState('')
   const [adding, setAdding] = useState(false)
+  const canAdd = dailyQuests.length < 3
 
   const completedCount = dailyQuests.filter((q) => q.completed_today).length
-  const canAdd = dailyQuests.length < 3
+
+  const needsRecovery = dailyQuests.some((q) => {
+    if (!q.last_completed_at) return false
+    const diffDays = Math.floor(
+      (new Date().getTime() - new Date(q.last_completed_at).getTime()) / 86400000
+    )
+    return diffDays >= 2 && q.current_streak === 0
+  })
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -25,50 +33,27 @@ export default function DailyQuests() {
     setAdding(false)
   }
 
-  // Check for missed streaks (streak is 0 but was previously > 0 could indicate recovery needed)
-  const needsRecovery = dailyQuests.some((q) => {
-    if (!q.last_completed_at) return false
-    const last = new Date(q.last_completed_at)
-    const today = new Date()
-    const diffDays = Math.floor((today.getTime() - last.getTime()) / 86400000)
-    return diffDays >= 2 && q.current_streak === 0
-  })
-
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: '#12121a', border: '1px solid #2a2a3f' }}>
+    <div className="rounded-3xl overflow-hidden" style={{ background: '#111118', border: '1px solid #1e1e2e' }}>
       {/* Header */}
-      <div className="px-5 py-4" style={{ borderBottom: '1px solid #2a2a3f' }}>
-        <div className="flex items-center gap-2 mb-1">
-          <Target size={16} style={{ color: '#ef4444' }} />
-          <h3 className="font-semibold text-sm text-white">Daily Quests</h3>
-          <div className="ml-auto flex items-center gap-1.5">
-            {dailyQuests.length > 0 && (
-              <span className="text-xs" style={{ color: '#6b7280' }}>
-                {completedCount}/{dailyQuests.length}
-              </span>
-            )}
-            {isPerfectDay && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                style={{ background: '#f59e0b22', color: '#f59e0b', border: '1px solid #f59e0b44' }}
-              >
-                ✨ Perfect Day!
-              </motion.span>
-            )}
-          </div>
-        </div>
+      <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #1e1e2e' }}>
+        <h3 className="text-sm font-semibold text-white flex-1">Daily Habits</h3>
 
-        {/* Progress bar */}
         {dailyQuests.length > 0 && (
-          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: '#1a1a27' }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: isPerfectDay ? '#f59e0b' : '#ef4444' }}
-              animate={{ width: `${(completedCount / dailyQuests.length) * 100}%` }}
-              transition={{ duration: 0.5 }}
-            />
+          <div className="flex items-center gap-2">
+            {/* Progress dots */}
+            <div className="flex gap-1">
+              {dailyQuests.map((q) => (
+                <div
+                  key={q.id}
+                  className="w-2 h-2 rounded-full transition-colors duration-300"
+                  style={{ background: q.completed_today ? '#10b981' : '#1e1e2e' }}
+                />
+              ))}
+            </div>
+            {isPerfectDay && (
+              <span className="text-xs font-semibold" style={{ color: '#f59e0b' }}>✦ 2× XP</span>
+            )}
           </div>
         )}
       </div>
@@ -81,106 +66,106 @@ export default function DailyQuests() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="px-5 py-3 flex items-center gap-2"
-            style={{ background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)' }}
+            style={{ background: '#ef444410', borderBottom: '1px solid #ef444420' }}
           >
-            <AlertTriangle size={14} style={{ color: '#ef4444' }} />
+            <AlertTriangle size={13} style={{ color: '#ef4444' }} />
             <p className="text-xs" style={{ color: '#ef4444' }}>
-              Streak broken! Complete today's quests to begin your recovery.
+              Streak lost — complete today's habits to recover
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Quest list */}
-      <div className="divide-y" style={{ borderColor: '#1a1a27' }}>
-        <AnimatePresence initial={false}>
-          {dailyQuests.map((quest) => (
-            <motion.div
-              key={quest.id}
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="px-5 py-3.5 flex items-center gap-3"
-            >
-              {/* Checkbox */}
-              <button
-                onClick={() => !quest.completed_today && completeDailyQuest(quest.id)}
-                className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-all"
-                style={{
-                  background: quest.completed_today ? '#10b981' : '#1a1a27',
-                  border: `2px solid ${quest.completed_today ? '#10b981' : '#2a2a3f'}`,
-                  cursor: quest.completed_today ? 'default' : 'pointer',
-                }}
-              >
-                {quest.completed_today && <Check size={12} className="text-white" />}
-              </button>
-
-              {/* Quest text */}
-              <span
-                className="flex-1 text-sm min-w-0 truncate"
-                style={{
-                  color: quest.completed_today ? '#4b5563' : '#e2e8f0',
-                  textDecoration: quest.completed_today ? 'line-through' : 'none',
-                }}
-              >
-                {quest.quest_text}
-              </span>
-
-              {/* Streak */}
-              {quest.current_streak > 0 && (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Flame size={12} style={{ color: '#ef4444' }} />
-                  <span className="text-xs font-semibold" style={{ color: '#ef4444' }}>
-                    {quest.current_streak}
-                  </span>
-                </div>
-              )}
-
-              {/* Delete */}
-              <button
-                onClick={() => deleteDailyQuest(quest.id)}
-                className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity"
-                style={{ color: '#6b7280' }}
-              >
-                <Trash2 size={11} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Add quest form */}
-      {canAdd && (
-        <form onSubmit={handleAdd} className="px-5 py-3" style={{ borderTop: dailyQuests.length > 0 ? '1px solid #1a1a27' : 'none' }}>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newText}
-              onChange={(e) => setNewText(e.target.value)}
-              placeholder={`Add daily habit (${dailyQuests.length}/3)...`}
-              className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ background: '#1a1a27', border: '1px solid #2a2a3f', color: '#e2e8f0' }}
-              onFocus={(e) => (e.target.style.borderColor = '#ef4444')}
-              onBlur={(e) => (e.target.style.borderColor = '#2a2a3f')}
-            />
+      {/* Quests */}
+      <AnimatePresence initial={false}>
+        {dailyQuests.map((quest, i) => (
+          <motion.div
+            key={quest.id}
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-3 px-5 py-4"
+            style={{ borderBottom: i < dailyQuests.length - 1 || canAdd ? '1px solid #1a1a28' : 'none' }}
+          >
+            {/* Tap-to-complete circle */}
             <button
-              type="submit"
-              disabled={!newText.trim() || adding}
-              className="px-3 py-2 rounded-xl transition-all"
-              style={{ background: newText.trim() ? '#ef4444' : '#2a2a3f', color: 'white' }}
+              onClick={() => !quest.completed_today && completeDailyQuest(quest.id)}
+              className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center transition-all"
+              style={{
+                background: quest.completed_today ? '#10b981' : 'transparent',
+                border: `2px solid ${quest.completed_today ? '#10b981' : '#333350'}`,
+                cursor: quest.completed_today ? 'default' : 'pointer',
+              }}
             >
-              <Plus size={15} />
+              {quest.completed_today && (
+                <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                  <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
             </button>
-          </div>
+
+            <span
+              className="flex-1 text-sm truncate"
+              style={{
+                color: quest.completed_today ? '#444460' : '#e2e8f0',
+                textDecoration: quest.completed_today ? 'line-through' : 'none',
+              }}
+            >
+              {quest.quest_text}
+            </span>
+
+            {quest.current_streak > 0 && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Flame size={11} style={{ color: '#ef4444' }} />
+                <span className="text-xs font-semibold" style={{ color: '#ef4444' }}>
+                  {quest.current_streak}
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={() => deleteDailyQuest(quest.id)}
+              className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!opacity-60 transition-opacity"
+              style={{ color: '#555570', opacity: 0.25 }}
+            >
+              <Trash2 size={11} />
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      {/* Add form */}
+      {canAdd && (
+        <form onSubmit={handleAdd} className="px-5 py-3 flex items-center gap-2">
+          <input
+            type="text"
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            placeholder={dailyQuests.length === 0 ? 'Add a daily habit…' : `Add habit ${dailyQuests.length + 1} of 3…`}
+            className="flex-1 text-sm bg-transparent outline-none"
+            style={{ color: '#e2e8f0' }}
+            onFocus={(e) => ((e.target.parentElement!).style.borderColor = '#ef444440')}
+            onBlur={(e) => ((e.target.parentElement!).style.borderColor = 'transparent')}
+          />
+          <button
+            type="submit"
+            disabled={!newText.trim() || adding}
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+            style={{
+              background: newText.trim() ? '#ef444420' : 'transparent',
+              color: newText.trim() ? '#ef4444' : '#333350',
+            }}
+          >
+            <Plus size={14} />
+          </button>
         </form>
       )}
 
-      {!canAdd && dailyQuests.length === 3 && (
-        <div className="px-5 py-3 text-center">
-          <p className="text-xs" style={{ color: '#4b5563' }}>3 daily quests set — complete them all for 2× XP bonus!</p>
-        </div>
+      {!canAdd && completedCount < 3 && (
+        <p className="px-5 py-3 text-xs" style={{ color: '#333350', borderTop: '1px solid #1a1a28' }}>
+          Complete all 3 habits for 2× XP bonus
+        </p>
       )}
     </div>
   )
