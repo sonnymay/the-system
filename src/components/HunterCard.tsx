@@ -25,11 +25,11 @@ export default function HunterCard() {
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {/* Character image banner */}
       {image && (
-        <div className="relative h-64 overflow-hidden">
+        <div className="relative overflow-hidden">
           <img
             src={image}
             alt={`${rank}-Rank Hunter`}
-            className="w-full h-full object-cover object-top"
+            className="w-full object-cover"
           />
           {/* Gradient fade at bottom */}
           <div className="absolute inset-0"
