@@ -4,18 +4,18 @@ import { Flame } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function DailyQuests() {
-  const dailyQuests = useStore((s) => s.dailyQuests)
-  const addDailyQuest = useStore((s) => s.addDailyQuest)
-  const completeDailyQuest = useStore((s) => s.completeDailyQuest)
-  const deleteDailyQuest = useStore((s) => s.deleteDailyQuest)
+  const dailyQuests = useStore((s) => s.quests)
+  const addDailyQuest = useStore((s) => s.addQuest)
+  const completeDailyQuest = useStore((s) => s.completeQuest)
+  const deleteDailyQuest = useStore((s) => s.deleteQuest)
 
   const [newText, setNewText] = useState('')
   const canAdd = dailyQuests.length < 3
 
-  async function handleAdd(e: React.FormEvent) {
+  function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!newText.trim() || !canAdd) return
-    await addDailyQuest(newText.trim())
+    addDailyQuest(newText.trim())
     setNewText('')
   }
 

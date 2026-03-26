@@ -9,6 +9,7 @@ export default function HunterCard() {
 
   if (!profile) return null
 
+
   const rank = profile.hunter_rank as HunterRank
   const rc = RANK_CONFIG[rank]
   const progress = getLevelProgress(profile.level, profile.current_xp)

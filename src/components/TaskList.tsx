@@ -29,10 +29,10 @@ export default function TaskList() {
     setDifficulty(DIFFICULTIES[(idx + 1) % DIFFICULTIES.length])
   }
 
-  async function handleAdd(e: React.FormEvent) {
+  function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    await addTask(title.trim(), difficulty)
+    addTask(title.trim(), difficulty)
     setTitle('')
     inputRef.current?.focus()
   }
