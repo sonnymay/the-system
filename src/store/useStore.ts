@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { HunterRank } from '../lib/types'
-import { XP_VALUES, getRankForLevel, getXpForLevel } from '../lib/types'
+import { XP_VALUES, QUEST_XP, getRankForLevel, getXpForLevel } from '../lib/types'
 
 export interface LocalProfile {
   username: string
@@ -42,8 +42,31 @@ interface XpGainEvent {
 }
 
 let xpEventId = 0
+
 function today() {
   return new Date().toISOString().split('T')[0]
+}
+
+function applyXp(
+  profile: LocalProfile,
+  xpGained: number
+): { newProfile: LocalProfile; leveledUp: boolean; rankedUp: boolean } {
+  const oldRank = profile.hunter_rank
+  let newXp = profile.current_xp + xpGained
+  let newLevel = profile.level
+  const newTotalXp = profile.total_xp + xpGained
+
+  while (newXp >= getXpForLevel(newLevel) && newLevel < 100) {
+    newXp -= getXpForLevel(newLevel)
+    newLevel++
+  }
+
+  const newRank = getRankForLevel(newLevel)
+  return {
+    newProfile: { ...profile, current_xp: newXp, total_xp: newTotalXp, level: newLevel, hunter_rank: newRank },
+    leveledUp: newLevel > profile.level,
+    rankedUp: newRank !== oldRank,
+  }
 }
 
 interface SystemStore {
@@ -51,16 +74,21 @@ interface SystemStore {
   tasks: LocalTask[]
   quests: LocalQuest[]
 
+  updateUsername: (name: string) => void
+
   addTask: (title: string, difficulty: string) => void
   completeTask: (taskId: string, x: number, y: number) => void
   deleteTask: (taskId: string) => void
 
-  completeQuest: (questId: string) => void
+  completeQuest: (questId: string, x: number, y: number) => void
   addQuest: (text: string) => void
   deleteQuest: (questId: string) => void
 
   rankUpEvent: RankUpEvent | null
   clearRankUpEvent: () => void
+
+  levelUpEvent: number | null
+  clearLevelUpEvent: () => void
 
   xpGainEvents: XpGainEvent[]
 
@@ -83,8 +111,12 @@ export const useStore = create<SystemStore>()(
       tasks: [],
       quests: [],
       rankUpEvent: null,
+      levelUpEvent: null,
       xpGainEvents: [],
       isPerfectDay: false,
+
+      updateUsername: (name) =>
+        set((s) => ({ profile: { ...s.profile, username: name } })),
 
       addTask: (title, difficulty) => {
         const task: LocalTask = {
@@ -109,38 +141,16 @@ export const useStore = create<SystemStore>()(
           tasks: s.tasks.filter((t) => t.id !== taskId),
           xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
         }))
+        setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
 
-        setTimeout(() => {
-          set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) }))
-        }, 1600)
+        const { newProfile, leveledUp, rankedUp } = applyXp(
+          { ...profile, total_tasks_completed: profile.total_tasks_completed + 1 },
+          xpGained
+        )
 
-        // Level up logic
-        const oldRank = profile.hunter_rank
-        let newXp = profile.current_xp + xpGained
-        let newLevel = profile.level
-        let newTotalXp = profile.total_xp + xpGained
-
-        while (newXp >= getXpForLevel(newLevel) && newLevel < 100) {
-          newXp -= getXpForLevel(newLevel)
-          newLevel++
-        }
-
-        const newRank = getRankForLevel(newLevel)
-
-        set({
-          profile: {
-            ...profile,
-            current_xp: newXp,
-            total_xp: newTotalXp,
-            level: newLevel,
-            hunter_rank: newRank,
-            total_tasks_completed: profile.total_tasks_completed + 1,
-          },
-        })
-
-        if (newRank !== oldRank) {
-          set({ rankUpEvent: { fromRank: oldRank as HunterRank, toRank: newRank, level: newLevel } })
-        }
+        set({ profile: newProfile })
+        if (rankedUp) set({ rankUpEvent: { fromRank: profile.hunter_rank, toRank: newProfile.hunter_rank, level: newProfile.level } })
+        else if (leveledUp) set({ levelUpEvent: newProfile.level })
       },
 
       deleteTask: (taskId) =>
@@ -158,11 +168,12 @@ export const useStore = create<SystemStore>()(
         set((s) => ({ quests: [...s.quests, quest] }))
       },
 
-      completeQuest: (questId) => {
-        const { quests } = get()
+      completeQuest: (questId, x, y) => {
+        const { quests, profile, isPerfectDay } = get()
         const quest = quests.find((q) => q.id === questId)
         if (!quest || quest.completed_today) return
 
+        const xpGained = isPerfectDay ? QUEST_XP * 2 : QUEST_XP
         const todayStr = today()
         let newStreak = 1
         if (quest.last_completed_at) {
@@ -177,9 +188,21 @@ export const useStore = create<SystemStore>()(
             ? { ...q, completed_today: true, current_streak: newStreak, last_completed_at: todayStr }
             : q
         )
+        const newIsPerfectDay = updated.length === 3 && updated.every((q) => q.completed_today)
 
-        const isPerfectDay = updated.length === 3 && updated.every((q) => q.completed_today)
-        set({ quests: updated, isPerfectDay })
+        // XP float
+        const eventId = xpEventId++
+        set((s) => ({
+          quests: updated,
+          isPerfectDay: newIsPerfectDay,
+          xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
+        }))
+        setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
+
+        const { newProfile, leveledUp, rankedUp } = applyXp(profile, xpGained)
+        set({ profile: newProfile })
+        if (rankedUp) set({ rankUpEvent: { fromRank: profile.hunter_rank, toRank: newProfile.hunter_rank, level: newProfile.level } })
+        else if (leveledUp) set({ levelUpEvent: newProfile.level })
       },
 
       deleteQuest: (questId) =>
@@ -189,16 +212,15 @@ export const useStore = create<SystemStore>()(
         })),
 
       clearRankUpEvent: () => set({ rankUpEvent: null }),
+      clearLevelUpEvent: () => set({ levelUpEvent: null }),
     }),
     {
       name: 'the-system',
-      // Reset completed_today on new day
       onRehydrateStorage: () => (state) => {
         if (!state) return
         const todayStr = today()
         const resetQuests = state.quests.map((q) => {
           if (q.last_completed_at === todayStr) return q
-          // Also break streak if missed 2+ days
           if (q.last_completed_at) {
             const diffDays = Math.floor(
               (new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000

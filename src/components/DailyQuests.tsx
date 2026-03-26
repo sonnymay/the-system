@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Flame } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { QUEST_XP } from '../lib/types'
 
 export default function DailyQuests() {
   const quests = useStore((s) => s.quests)
@@ -52,7 +53,11 @@ export default function DailyQuests() {
             >
               <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-50">
                 <button
-                  onClick={() => !quest.completed_today && completeQuest(quest.id)}
+                  onClick={(e) => {
+                    if (quest.completed_today) return
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    completeQuest(quest.id, rect.x + rect.width / 2, rect.y)
+                  }}
                   className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
                   style={{
                     borderColor: quest.completed_today ? '#10b981' : '#d1d5db',
@@ -77,6 +82,10 @@ export default function DailyQuests() {
                   {quest.quest_text}
                 </span>
 
+                <span className="text-xs font-medium flex-shrink-0 text-gray-300">
+                  +{QUEST_XP}
+                </span>
+
                 {quest.current_streak > 1 && (
                   <div className="flex items-center gap-0.5 flex-shrink-0">
                     <Flame size={11} className="text-orange-400" />
@@ -94,6 +103,14 @@ export default function DailyQuests() {
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {/* Empty state */}
+        {quests.length === 0 && (
+          <div className="px-5 py-4 text-center">
+            <p className="text-sm text-gray-400">Build your first habit below.</p>
+            <p className="text-xs text-gray-300 mt-0.5">Complete all 3 daily for 2× XP on tasks.</p>
+          </div>
+        )}
 
         {/* Add row */}
         {canAdd && (

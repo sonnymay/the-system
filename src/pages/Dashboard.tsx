@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion'
 import HunterCard from '../components/HunterCard'
 import DailyQuests from '../components/DailyQuests'
+import TaskList from '../components/TaskList'
 import RankUpOverlay from '../components/RankUpOverlay'
+import LevelUpToast from '../components/LevelUpToast'
 import XpFloats from '../components/XpFloats'
 
 export default function Dashboard() {
   return (
     <>
       <RankUpOverlay />
+      <LevelUpToast />
       <XpFloats />
 
       <div className="min-h-screen" style={{ background: '#f5f5f7' }}>
@@ -17,6 +20,9 @@ export default function Dashboard() {
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
             <DailyQuests />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
+            <TaskList />
           </motion.div>
         </div>
       </div>

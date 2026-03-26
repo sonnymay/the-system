@@ -39,16 +39,19 @@ export default function TaskList() {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <p className="font-semibold text-gray-900 text-sm">Quests</p>
+      {/* Header */}
+      <div className="px-5 py-4 flex items-center justify-between">
+        <p className="font-semibold text-gray-900">Tasks</p>
         {tasks.length > 0 && (
-          <span className="text-xs text-gray-400">{tasks.length} active</span>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+            style={{ background: '#f3f4f6', color: '#9ca3af' }}>
+            {tasks.length} active
+          </span>
         )}
       </div>
 
       {/* Add task row */}
-      <form onSubmit={handleAdd} className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-50">
-        {/* Difficulty tap-to-cycle */}
+      <form onSubmit={handleAdd} className="flex items-center gap-3 px-5 py-3.5 border-t border-gray-50">
         <button
           type="button"
           onClick={cycleDifficulty}
@@ -65,8 +68,9 @@ export default function TaskList() {
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Add a quest…"
-          className="flex-1 text-sm bg-transparent outline-none text-gray-700"
+          placeholder="Add a task…"
+          className="flex-1 text-sm bg-transparent outline-none"
+          style={{ color: '#374151' }}
         />
 
         <span className="text-xs font-medium flex-shrink-0"
@@ -75,11 +79,18 @@ export default function TaskList() {
         </span>
       </form>
 
-      {/* Task rows */}
-      <div className="divide-y divide-gray-50">
+      {/* Task list */}
+      <div className="border-t border-gray-50">
         <AnimatePresence initial={false}>
           {tasks.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-gray-300">No active quests</p>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="px-5 py-5 text-center"
+            >
+              <p className="text-sm text-gray-400">No tasks yet.</p>
+              <p className="text-xs text-gray-300 mt-0.5">Add one above and earn XP when you finish.</p>
+            </motion.div>
           ) : (
             tasks.map((task) => {
               const diff = task.difficulty as TaskDifficulty
@@ -88,12 +99,19 @@ export default function TaskList() {
                 <motion.div
                   key={task.id}
                   layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="group flex items-center gap-3 px-5 py-3.5"
+                  className="group flex items-center gap-3 px-5 py-3.5 border-b border-gray-50"
                 >
-                  <span className="flex-shrink-0 text-base">{ICONS[diff]}</span>
+                  {/* Complete button — always visible */}
+                  <button
+                    onClick={(e) => handleComplete(task.id, e)}
+                    className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-200 flex items-center justify-center hover:border-emerald-400 hover:bg-emerald-50 transition-all"
+                    title="Mark done"
+                  />
+
+                  <span className="flex-shrink-0 text-sm">{ICONS[diff]}</span>
 
                   <span className="flex-1 text-sm text-gray-700 truncate">{task.title}</span>
 
@@ -103,15 +121,8 @@ export default function TaskList() {
                   </span>
 
                   <button
-                    onClick={(e) => handleComplete(task.id, e)}
-                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 text-xs font-medium text-emerald-500 hover:text-emerald-600 transition-all"
-                  >
-                    done
-                  </button>
-
-                  <button
                     onClick={() => deleteTask(task.id)}
-                    className="flex-shrink-0 opacity-0 group-hover:opacity-40 hover:!opacity-70 text-gray-400 transition-all text-sm leading-none"
+                    className="flex-shrink-0 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all text-base leading-none"
                   >
                     ×
                   </button>

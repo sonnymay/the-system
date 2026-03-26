@@ -51,6 +51,8 @@ export const XP_VALUES: Record<TaskDifficulty, number> = {
   mvp: 1000,
 }
 
+export const QUEST_XP = 30  // XP awarded per daily habit completion
+
 export const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   poring: 'Poring',
   orc: 'Orc',
