@@ -7,7 +7,7 @@ import { RANK_CONFIG, QUEST_XP, getLevelProgress } from '../lib/types'
 const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   E: '/ranks/e-rank.png',
   D: '/ranks/d-rank.png',
-  // C: '/ranks/c-rank.png',
+  C: '/ranks/c-rank.png',
   // B: '/ranks/b-rank.png',
   // A: '/ranks/a-rank.png',
   // S: '/ranks/s-rank.png',
@@ -107,7 +107,7 @@ export default function HunterCard() {
                 <span className="ml-1.5 text-gray-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
               </button>
             )}
-            <p className="text-xs text-gray-400">{rank}-Rank · Level {profile.level}</p>
+            <p className="text-xs text-gray-400">{rc.title} · Lv {profile.level}</p>
           </div>
           {isPerfectDay && image && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"

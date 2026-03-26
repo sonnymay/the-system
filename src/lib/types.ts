@@ -67,13 +67,13 @@ export const DIFFICULTY_COLORS: Record<TaskDifficulty, string> = {
   mvp: '#f59e0b',
 }
 
-export const RANK_CONFIG: Record<HunterRank, { color: string; levels: [number, number]; identity: string; glow: string }> = {
-  E: { color: '#9ca3af', levels: [1, 10], identity: "I'm building the foundation", glow: 'rgba(156,163,175,0.6)' },
-  D: { color: '#60a5fa', levels: [11, 20], identity: "I'm becoming consistent", glow: 'rgba(96,165,250,0.6)' },
-  C: { color: '#34d399', levels: [21, 40], identity: "I'm someone who shows up", glow: 'rgba(52,211,153,0.6)' },
-  B: { color: '#a78bfa', levels: [41, 60], identity: "I'm reliable and disciplined", glow: 'rgba(167,139,250,0.6)' },
-  A: { color: '#f97316', levels: [61, 80], identity: "I'm elite at execution", glow: 'rgba(249,115,22,0.6)' },
-  S: { color: '#f59e0b', levels: [81, 100], identity: "I'm a systems master", glow: 'rgba(245,158,11,0.6)' },
+export const RANK_CONFIG: Record<HunterRank, { color: string; levels: [number, number]; title: string; identity: string; glow: string }> = {
+  E: { color: '#9ca3af', levels: [1, 10],   title: 'Novice',         identity: "I'm building the foundation",  glow: 'rgba(156,163,175,0.6)' },
+  D: { color: '#60a5fa', levels: [11, 20],  title: 'Acolyte',        identity: "I'm becoming consistent",      glow: 'rgba(96,165,250,0.6)'  },
+  C: { color: '#34d399', levels: [21, 40],  title: 'Warrior',        identity: "I'm someone who shows up",     glow: 'rgba(52,211,153,0.6)'  },
+  B: { color: '#a78bfa', levels: [41, 60],  title: 'Champion',       identity: "I'm reliable and disciplined", glow: 'rgba(167,139,250,0.6)' },
+  A: { color: '#f97316', levels: [61, 80],  title: 'Berserker',      identity: "I'm elite at execution",       glow: 'rgba(249,115,22,0.6)'  },
+  S: { color: '#f59e0b', levels: [81, 100], title: 'Shadow Monarch', identity: "I'm a systems master",         glow: 'rgba(245,158,11,0.6)'  },
 }
 
 export function getXpForLevel(level: number): number {

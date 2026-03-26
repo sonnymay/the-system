@@ -46,7 +46,7 @@ export default function RankUpOverlay() {
               style={{ color: RANK_CONFIG[rankUpEvent.toRank].color }}>
               RANK UP
             </p>
-            <h2 className="text-xl font-bold text-gray-900 mb-1">{rankUpEvent.toRank}-Rank Hunter</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{RANK_CONFIG[rankUpEvent.toRank].title}</h2>
             <p className="text-sm text-gray-400 mb-5">Level {rankUpEvent.level}</p>
 
             <div className="bg-gray-50 rounded-xl px-4 py-3">
