@@ -29,7 +29,7 @@ export default function HunterCard() {
           <img
             src={image}
             alt={`${rank}-Rank Hunter`}
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-top"
           />
           {/* Gradient fade at bottom */}
           <div className="absolute inset-0"
