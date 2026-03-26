@@ -26,17 +26,11 @@ export default function HunterCard() {
 
       {/* Character artwork — object-contain ensures full body is visible */}
       {image ? (
-        <div className="relative" style={{ background: '#0e1118' }}>
+        <div className="relative">
           <img
             src={image}
             alt={`${rank}-Rank Hunter`}
-            style={{
-              display: 'block',
-              width: '100%',
-              maxHeight: '400px',
-              objectFit: 'contain',
-              objectPosition: 'center bottom',
-            }}
+            style={{ display: 'block', width: '100%' }}
           />
           {/* Fade bottom of artwork into white */}
           <div
