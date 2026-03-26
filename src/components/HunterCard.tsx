@@ -6,7 +6,7 @@ import { RANK_CONFIG, QUEST_XP, getLevelProgress } from '../lib/types'
 
 const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   E: '/ranks/e-rank.png',
-  // D: '/ranks/d-rank.png',
+  D: '/ranks/d-rank.png',
   // C: '/ranks/c-rank.png',
   // B: '/ranks/b-rank.png',
   // A: '/ranks/a-rank.png',
