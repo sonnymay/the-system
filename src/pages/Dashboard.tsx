@@ -11,25 +11,18 @@ export default function Dashboard() {
       <RankUpOverlay />
       <XpFloats />
 
-      <div className="min-h-screen" style={{ background: '#08080e' }}>
-        <div className="flex items-center justify-between px-6 pt-6 pb-0">
-          <span className="text-xs font-semibold tracking-widest" style={{ color: '#252530' }}>
-            THE SYSTEM
-          </span>
+      <div className="min-h-screen" style={{ background: '#f5f5f7' }}>
+        <div className="max-w-md mx-auto px-4 py-6 space-y-3">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <HunterCard />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
+            <DailyQuests />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
+            <TaskList />
+          </motion.div>
         </div>
-
-        <motion.div
-          className="max-w-md mx-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          <HunterCard />
-          <div className="mx-6 mb-6" style={{ height: 1, background: '#0f0f18' }} />
-          <DailyQuests />
-          <div className="mx-6 my-6" style={{ height: 1, background: '#0f0f18' }} />
-          <TaskList />
-        </motion.div>
       </div>
     </>
   )

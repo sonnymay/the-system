@@ -3,8 +3,8 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
-  background: #08080e;
-  color: #f0f0f5;
+  background: #f5f5f7;
+  color: #1a1a1a;
   font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   margin: 0;
@@ -13,12 +13,6 @@ body {
 
 #root { min-height: 100vh; }
 
-::selection { background: #8b5cf630; }
-
+::selection { background: #7c3aed20; }
 ::-webkit-scrollbar { width: 0; }
-
-input::placeholder { color: #2a2a38; }
-
-input[type="text"], input[type="email"], input[type="password"] {
-  appearance: none;
-}
+input::placeholder { color: #c0c0c8; }

@@ -21,46 +21,41 @@ export default function RankUpOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center px-8"
-          style={{ background: 'rgba(8,8,14,0.95)' }}
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}
           onClick={clearRankUpEvent}
         >
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-            className="text-center"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ type: 'spring', damping: 20 }}
+            className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-xs w-full"
           >
-            <p className="text-xs font-semibold tracking-widest mb-6"
-              style={{ color: RANK_CONFIG[rankUpEvent.toRank].color }}>
-              RANK UP
-            </p>
-
             <div
-              className="font-black leading-none mb-4"
+              className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-black mx-auto mb-4"
               style={{
-                fontSize: 96,
+                background: RANK_CONFIG[rankUpEvent.toRank].color + '18',
                 color: RANK_CONFIG[rankUpEvent.toRank].color,
-                letterSpacing: '-4px',
               }}
             >
               {rankUpEvent.toRank}
             </div>
 
-            <p className="text-xl font-bold text-white mb-2">
-              {rankUpEvent.toRank}-Rank Hunter
+            <p className="text-xs font-semibold tracking-widest mb-1"
+              style={{ color: RANK_CONFIG[rankUpEvent.toRank].color }}>
+              RANK UP
             </p>
-            <p className="text-sm" style={{ color: '#505060' }}>Level {rankUpEvent.level}</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{rankUpEvent.toRank}-Rank Hunter</h2>
+            <p className="text-sm text-gray-400 mb-5">Level {rankUpEvent.level}</p>
 
-            <div className="mt-8 px-6 py-4 rounded-2xl inline-block"
-              style={{ background: '#0f0f18' }}>
-              <p className="text-sm italic" style={{ color: RANK_CONFIG[rankUpEvent.toRank].color }}>
+            <div className="bg-gray-50 rounded-xl px-4 py-3">
+              <p className="text-sm text-gray-600 italic">
                 "{RANK_CONFIG[rankUpEvent.toRank].identity}"
               </p>
             </div>
 
-            <p className="text-xs mt-8" style={{ color: '#252530' }}>tap to continue</p>
+            <p className="text-xs text-gray-300 mt-4">tap to continue</p>
           </motion.div>
         </motion.div>
       )}
