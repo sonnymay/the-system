@@ -25,15 +25,15 @@ export default function HunterCard() {
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {/* Character image banner */}
       {image && (
-        <div className="relative h-48 overflow-hidden">
+        <div className="relative h-64 overflow-hidden">
           <img
             src={image}
             alt={`${rank}-Rank Hunter`}
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-cover object-center"
           />
           {/* Gradient fade at bottom */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, transparent 40%, white 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, transparent 55%, white 100%)' }} />
 
           {/* Rank badge overlay */}
           <div className="absolute bottom-3 left-4 flex items-end gap-3">
