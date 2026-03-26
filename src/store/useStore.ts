@@ -41,6 +41,8 @@ interface XpGainEvent {
   y: number
 }
 
+const STREAK_MILESTONES = [7, 14, 30, 60, 100]
+
 let xpEventId = 0
 
 function today() {
@@ -73,7 +75,9 @@ interface SystemStore {
   profile: LocalProfile
   tasks: LocalTask[]
   quests: LocalQuest[]
+  hasOnboarded: boolean
 
+  setHasOnboarded: (v: boolean) => void
   updateUsername: (name: string) => void
 
   addTask: (title: string, difficulty: string) => void
@@ -90,8 +94,10 @@ interface SystemStore {
   levelUpEvent: number | null
   clearLevelUpEvent: () => void
 
-  xpGainEvents: XpGainEvent[]
+  streakMilestoneEvent: number | null
+  clearStreakMilestoneEvent: () => void
 
+  xpGainEvents: XpGainEvent[]
   isPerfectDay: boolean
 }
 
@@ -110,10 +116,14 @@ export const useStore = create<SystemStore>()(
       profile: DEFAULT_PROFILE,
       tasks: [],
       quests: [],
+      hasOnboarded: false,
       rankUpEvent: null,
       levelUpEvent: null,
+      streakMilestoneEvent: null,
       xpGainEvents: [],
       isPerfectDay: false,
+
+      setHasOnboarded: (v) => set({ hasOnboarded: v }),
 
       updateUsername: (name) =>
         set((s) => ({ profile: { ...s.profile, username: name } })),
@@ -190,7 +200,6 @@ export const useStore = create<SystemStore>()(
         )
         const newIsPerfectDay = updated.length === 3 && updated.every((q) => q.completed_today)
 
-        // XP float
         const eventId = xpEventId++
         set((s) => ({
           quests: updated,
@@ -203,6 +212,11 @@ export const useStore = create<SystemStore>()(
         set({ profile: newProfile })
         if (rankedUp) set({ rankUpEvent: { fromRank: profile.hunter_rank, toRank: newProfile.hunter_rank, level: newProfile.level } })
         else if (leveledUp) set({ levelUpEvent: newProfile.level })
+
+        // Streak milestone check
+        if (STREAK_MILESTONES.includes(newStreak)) {
+          set({ streakMilestoneEvent: newStreak })
+        }
       },
 
       deleteQuest: (questId) =>
@@ -213,6 +227,7 @@ export const useStore = create<SystemStore>()(
 
       clearRankUpEvent: () => set({ rankUpEvent: null }),
       clearLevelUpEvent: () => set({ levelUpEvent: null }),
+      clearStreakMilestoneEvent: () => set({ streakMilestoneEvent: null }),
     }),
     {
       name: 'the-system',

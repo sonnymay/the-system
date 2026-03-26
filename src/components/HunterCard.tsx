@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useStore } from '../store/useStore'
 import type { HunterRank } from '../lib/types'
-import { RANK_CONFIG, QUEST_XP, getLevelProgress } from '../lib/types'
+import { RANK_CONFIG, getLevelProgress } from '../lib/types'
 
 const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   E: '/ranks/e-rank.png',
@@ -12,6 +12,8 @@ const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   // A: '/ranks/a-rank.png',
   // S: '/ranks/s-rank.png',
 }
+
+const RANKS: HunterRank[] = ['E', 'D', 'C', 'B', 'A', 'S']
 
 export default function HunterCard() {
   const profile = useStore((s) => s.profile)
@@ -28,6 +30,10 @@ export default function HunterCard() {
   const image = RANK_IMAGES[rank]
 
   const maxStreak = quests.length > 0 ? Math.max(...quests.map((q) => q.current_streak)) : 0
+
+  const nextRankIdx = RANKS.indexOf(rank) + 1
+  const nextRank = nextRankIdx < RANKS.length ? RANKS[nextRankIdx] : null
+  const levelsToRankUp = nextRank ? rc.levels[1] - profile.level + 1 : null
 
   function saveName() {
     const trimmed = nameInput.trim()
@@ -77,8 +83,9 @@ export default function HunterCard() {
         </div>
       )}
 
-      {/* Name + rank info */}
-      <div className="px-5 pt-3 pb-4">
+      {/* Info section */}
+      <div className="px-5 pt-3 pb-5">
+        {/* Name row */}
         <div className="flex items-center gap-3 mb-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0"
@@ -109,12 +116,6 @@ export default function HunterCard() {
             )}
             <p className="text-xs text-gray-400">{rc.title} · Lv {profile.level}</p>
           </div>
-          {isPerfectDay && image && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-              style={{ background: '#fef3c7', color: '#d97706' }}>
-              ✦ 2× XP
-            </span>
-          )}
         </div>
 
         {/* XP bar */}
@@ -127,21 +128,27 @@ export default function HunterCard() {
             transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
           />
         </div>
-        <div className="flex justify-between text-xs text-gray-400 mb-3">
+        <div className="flex justify-between text-xs text-gray-400 mb-4">
           <span>{progress.current.toLocaleString()} XP</span>
           <span>{progress.needed.toLocaleString()} XP to Lv {profile.level + 1}</span>
         </div>
 
         {/* Stats row */}
-        <div className="flex items-center gap-4 text-xs text-gray-400">
-          {maxStreak > 0 && (
-            <span>🔥 {maxStreak} day streak</span>
+        <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+          {maxStreak > 0 && <span>🔥 {maxStreak} day streak</span>}
+          <span>⚔️ {profile.total_tasks_completed} done</span>
+          {levelsToRankUp !== null && (
+            <span className="ml-auto font-medium" style={{ color: RANK_CONFIG[nextRank!].color }}>
+              {levelsToRankUp} lvl to {nextRank}-Rank
+            </span>
           )}
-          <span>⚔️ {profile.total_tasks_completed} completed</span>
-          <span className="ml-auto" style={{ color: rc.color + 'cc' }}>
-            +{QUEST_XP} XP/habit
-          </span>
+          {!nextRank && <span className="ml-auto font-medium" style={{ color: rc.color }}>MAX RANK</span>}
         </div>
+
+        {/* Identity quote */}
+        <p className="text-xs mt-2.5 italic" style={{ color: rc.color + '99' }}>
+          "{rc.identity}"
+        </p>
       </div>
     </div>
   )

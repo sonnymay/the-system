@@ -10,6 +10,8 @@ export default function DailyQuests() {
   const completeQuest = useStore((s) => s.completeQuest)
   const deleteQuest = useStore((s) => s.deleteQuest)
 
+  const isPerfectDay = useStore((s) => s.isPerfectDay)
+
   const [newText, setNewText] = useState('')
   const canAdd = quests.length < 3
   const doneCount = quests.filter((q) => q.completed_today).length
@@ -22,7 +24,10 @@ export default function DailyQuests() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div
+      className="bg-white rounded-2xl shadow-sm overflow-hidden transition-all duration-500"
+      style={isPerfectDay ? { boxShadow: '0 0 0 2px #fbbf24, 0 4px 16px rgba(251,191,36,0.15)' } : {}}
+    >
       {/* Header */}
       <div className="px-5 py-4 flex items-center justify-between">
         <p className="font-semibold text-gray-900">Daily Habits</p>
