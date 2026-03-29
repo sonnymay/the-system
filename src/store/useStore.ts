@@ -65,6 +65,18 @@ export interface WeeklyStats {
 interface RankUpEvent { fromRank: HunterRank; toRank: HunterRank; level: number }
 interface XpGainEvent { id: number; amount: number; x: number; y: number }
 
+interface UndoSnapshot {
+  label: string
+  profile: LocalProfile
+  tasks: LocalTask[]
+  quests: LocalQuest[]
+  isPerfectDay: boolean
+  todaysWins: CompletedTask[]
+  weeklyStats: WeeklyStats
+  dailyActivity: Record<string, DailyActivity>
+  dailyChallenge: { text: string; completed: boolean; date: string } | null
+}
+
 const STREAK_MILESTONES = [7, 14, 30, 60, 100]
 let xpEventId = 0
 
@@ -148,6 +160,7 @@ interface SystemStore {
   weekSummaryEvent: boolean
   xpGainEvents: XpGainEvent[]
   xpPenaltyEvent: number | null
+  undoSnapshot: UndoSnapshot | null
 
   // Actions
   updateUsername: (name: string) => void
@@ -172,6 +185,9 @@ interface SystemStore {
   switchProfile: (slotId: string) => void
   createProfile: (name: string) => void
   deleteProfile: (slotId: string) => void
+
+  triggerUndo: () => void
+  clearUndo: () => void
 
   clearRankUpEvent: () => void
   clearLevelUpEvent: () => void
@@ -206,6 +222,7 @@ export const useStore = create<SystemStore>()(
       weekSummaryEvent: false,
       xpGainEvents: [],
       xpPenaltyEvent: null,
+      undoSnapshot: null,
 
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
       setTutorialDone: () => set({ tutorialDone: true }),
@@ -244,9 +261,22 @@ export const useStore = create<SystemStore>()(
       },
 
       completeTask: (taskId, x, y) => {
-        const { tasks, profile, quests, isPerfectDay, dailyActivity } = get()
+        const { tasks, profile, quests, isPerfectDay, dailyActivity, todaysWins, weeklyStats, dailyChallenge } = get()
         const task = tasks.find((t) => t.id === taskId)
         if (!task) return
+
+        // Save undo snapshot before making changes
+        const undoSnap: UndoSnapshot = {
+          label: `"${task.title}"`,
+          profile: { ...profile },
+          tasks: [...tasks],
+          quests: [...quests],
+          isPerfectDay,
+          todaysWins: [...todaysWins],
+          weeklyStats: { ...weeklyStats },
+          dailyActivity: { ...dailyActivity },
+          dailyChallenge,
+        }
 
         const maxStreak = quests.length > 0 ? Math.max(...quests.map(q => q.current_streak)) : 0
         const multiplier = getStreakMultiplier(maxStreak)
@@ -290,6 +320,8 @@ export const useStore = create<SystemStore>()(
           haptic([50, 30, 50, 30, 100])
           set({ levelUpEvent: newProfile.level })
         }
+
+        set({ undoSnapshot: undoSnap })
       },
 
       deleteTask: (taskId) =>
@@ -306,9 +338,21 @@ export const useStore = create<SystemStore>()(
       },
 
       completeQuest: (questId, x, y) => {
-        const { quests, profile, isPerfectDay, dailyActivity } = get()
+        const { quests, profile, isPerfectDay, dailyActivity, todaysWins, weeklyStats, dailyChallenge } = get()
         const quest = quests.find((q) => q.id === questId)
         if (!quest || quest.completed_today) return
+
+        const undoSnap: UndoSnapshot = {
+          label: `"${quest.quest_text}"`,
+          profile: { ...profile },
+          tasks: [...get().tasks],
+          quests: [...quests],
+          isPerfectDay,
+          todaysWins: [...todaysWins],
+          weeklyStats: { ...weeklyStats },
+          dailyActivity: { ...dailyActivity },
+          dailyChallenge,
+        }
 
         haptic(10)
         sounds.habitComplete()
@@ -366,6 +410,8 @@ export const useStore = create<SystemStore>()(
         if (STREAK_MILESTONES.includes(newStreak)) {
           set({ streakMilestoneEvent: newStreak })
         }
+
+        set({ undoSnapshot: undoSnap })
       },
 
       deleteQuest: (questId) =>
@@ -379,8 +425,20 @@ export const useStore = create<SystemStore>()(
         })),
 
       completeDailyChallenge: (x, y) => {
-        const { dailyChallenge, profile, quests, isPerfectDay, dailyActivity } = get()
+        const { dailyChallenge, profile, quests, isPerfectDay, dailyActivity, todaysWins, weeklyStats } = get()
         if (!dailyChallenge || dailyChallenge.completed) return
+
+        const undoSnap: UndoSnapshot = {
+          label: 'Daily Challenge',
+          profile: { ...profile },
+          tasks: [...get().tasks],
+          quests: [...quests],
+          isPerfectDay,
+          todaysWins: [...todaysWins],
+          weeklyStats: { ...weeklyStats },
+          dailyActivity: { ...dailyActivity },
+          dailyChallenge: { ...dailyChallenge },
+        }
 
         haptic([10, 50, 10])
         sounds.taskComplete()
@@ -415,6 +473,8 @@ export const useStore = create<SystemStore>()(
           haptic([50, 30, 50, 30, 100])
           set({ levelUpEvent: newProfile.level })
         }
+
+        set({ undoSnapshot: undoSnap })
       },
 
       switchProfile: (slotId) => {
@@ -489,6 +549,26 @@ export const useStore = create<SystemStore>()(
       clearPerfectDayEvent: () => set({ perfectDayEvent: false }),
       clearWeekSummaryEvent: () => set({ weekSummaryEvent: false }),
       clearXpPenaltyEvent: () => set({ xpPenaltyEvent: null }),
+
+      triggerUndo: () => {
+        const snap = get().undoSnapshot
+        if (!snap) return
+        set({
+          profile: snap.profile,
+          tasks: snap.tasks,
+          quests: snap.quests,
+          isPerfectDay: snap.isPerfectDay,
+          todaysWins: snap.todaysWins,
+          weeklyStats: snap.weeklyStats,
+          dailyActivity: snap.dailyActivity,
+          dailyChallenge: snap.dailyChallenge,
+          undoSnapshot: null,
+          rankUpEvent: null,
+          levelUpEvent: null,
+          perfectDayEvent: false,
+        })
+      },
+      clearUndo: () => set({ undoSnapshot: null }),
     }),
     {
       name: 'the-system',

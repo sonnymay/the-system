@@ -14,6 +14,7 @@ import SettingsModal from '../components/SettingsModal'
 import XpFloats from '../components/XpFloats'
 import StreakCalendar from '../components/StreakCalendar'
 import OnboardingTutorial from '../components/OnboardingTutorial'
+import UndoToast from '../components/UndoToast'
 import { useTheme } from '../lib/theme'
 import { useStore } from '../store/useStore'
 
@@ -53,6 +54,7 @@ export default function Dashboard() {
       <PerfectDayEffect />
       <WeeklySummaryModal />
       <PenaltyToast />
+      <UndoToast />
       <XpFloats />
 
       <div className="min-h-screen" style={{ background: t.bg }}>
