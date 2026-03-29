@@ -11,24 +11,53 @@ import PerfectDayEffect from '../components/PerfectDayEffect'
 import WeeklySummaryModal from '../components/WeeklySummaryModal'
 import SettingsModal from '../components/SettingsModal'
 import XpFloats from '../components/XpFloats'
+import StreakCalendar from '../components/StreakCalendar'
+import OnboardingTutorial from '../components/OnboardingTutorial'
+import { useTheme } from '../lib/theme'
+import { useStore } from '../store/useStore'
+
+function PenaltyToast() {
+  const penaltyEvent = useStore((s) => s.xpPenaltyEvent)
+  const clearXpPenaltyEvent = useStore((s) => s.clearXpPenaltyEvent)
+
+  if (!penaltyEvent) return null
+
+  setTimeout(clearXpPenaltyEvent, 3000)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 24 }}
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full shadow-xl text-sm font-semibold text-white"
+      style={{ background: '#dc2626', whiteSpace: 'nowrap' }}
+    >
+      ⚠️ -{penaltyEvent} XP — missed habits yesterday
+    </motion.div>
+  )
+}
 
 export default function Dashboard() {
+  const t = useTheme()
+
   return (
     <>
       <NamePrompt />
+      <OnboardingTutorial />
       <RankUpOverlay />
       <LevelUpToast />
       <StreakMilestoneToast />
       <PerfectDayEffect />
       <WeeklySummaryModal />
+      <PenaltyToast />
       <XpFloats />
 
-      <div className="min-h-screen" style={{ background: '#f5f5f7' }}>
+      <div className="min-h-screen" style={{ background: t.bg }}>
         <div className="max-w-md mx-auto px-4 pt-8 pb-6 space-y-3">
           {/* Header */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
             className="px-1 pb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase">The System</p>
+            <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: t.textMuted }}>The System</p>
             <SettingsModal />
           </motion.div>
 
@@ -42,6 +71,9 @@ export default function Dashboard() {
             <TaskList />
           </motion.div>
           <TodaysWins />
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}>
+            <StreakCalendar />
+          </motion.div>
         </div>
       </div>
     </>

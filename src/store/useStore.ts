@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { HunterRank } from '../lib/types'
-import { XP_VALUES, QUEST_XP, getRankForLevel, getXpForLevel } from '../lib/types'
+import {
+  XP_VALUES, QUEST_XP, DAILY_CHALLENGE_XP,
+  getRankForLevel, getXpForLevel, getDailyChallenge, getStreakMultiplier,
+} from '../lib/types'
 import { sounds } from '../lib/sounds'
 
 export interface LocalProfile {
@@ -38,12 +41,18 @@ export interface CompletedTask {
   completed_at: string
 }
 
+export interface DailyActivity {
+  habits: number
+  tasks: number
+}
+
 export interface ProfileSlot {
   id: string
   profile: LocalProfile
   tasks: LocalTask[]
   quests: LocalQuest[]
   isPerfectDay: boolean
+  dailyActivity: Record<string, DailyActivity>
 }
 
 export interface WeeklyStats {
@@ -89,6 +98,15 @@ function applyXp(profile: LocalProfile, xpGained: number) {
   }
 }
 
+function updateActivity(
+  dailyActivity: Record<string, DailyActivity>,
+  field: 'habits' | 'tasks'
+): Record<string, DailyActivity> {
+  const todayStr = today()
+  const prev = dailyActivity[todayStr] || { habits: 0, tasks: 0 }
+  return { ...dailyActivity, [todayStr]: { ...prev, [field]: prev[field] + 1 } }
+}
+
 const DEFAULT_PROFILE: LocalProfile = {
   username: 'Hunter', hunter_rank: 'E', level: 1,
   current_xp: 0, total_xp: 0, total_tasks_completed: 0,
@@ -99,19 +117,45 @@ const DEFAULT_WEEKLY: WeeklyStats = {
 }
 
 interface SystemStore {
+  // Core per-profile state
   profile: LocalProfile
   tasks: LocalTask[]
   quests: LocalQuest[]
-  hasOnboarded: boolean
+  isPerfectDay: boolean
   todaysWins: CompletedTask[]
   weeklyStats: WeeklyStats
   lastWeekStats: WeeklyStats | null
+  dailyActivity: Record<string, DailyActivity>
+
+  // Multi-profile
   profileSlots: ProfileSlot[]
   activeSlotId: string
 
+  // Global settings (not per-profile)
+  hasOnboarded: boolean
+  tutorialDone: boolean
+  darkMode: boolean
+  xpPenaltyEnabled: boolean
+
+  // Daily challenge (global — same challenge for all profiles each day)
+  dailyChallenge: { text: string; completed: boolean; date: string } | null
+
+  // Events
+  rankUpEvent: RankUpEvent | null
+  levelUpEvent: number | null
+  streakMilestoneEvent: number | null
+  perfectDayEvent: boolean
+  weekSummaryEvent: boolean
+  xpGainEvents: XpGainEvent[]
+  xpPenaltyEvent: number | null
+
+  // Actions
   updateUsername: (name: string) => void
   setHasOnboarded: (v: boolean) => void
+  setTutorialDone: () => void
   resetProgress: () => void
+  toggleDarkMode: () => void
+  toggleXpPenalty: () => void
 
   addTask: (title: string, difficulty: string) => void
   completeTask: (taskId: string, x: number, y: number) => void
@@ -120,23 +164,21 @@ interface SystemStore {
   completeQuest: (questId: string, x: number, y: number) => void
   addQuest: (text: string) => void
   deleteQuest: (questId: string) => void
+  reorderQuests: (newOrder: LocalQuest[]) => void
+  updateQuestText: (questId: string, newText: string) => void
+
+  completeDailyChallenge: (x: number, y: number) => void
 
   switchProfile: (slotId: string) => void
   createProfile: (name: string) => void
   deleteProfile: (slotId: string) => void
 
-  rankUpEvent: RankUpEvent | null
   clearRankUpEvent: () => void
-  levelUpEvent: number | null
   clearLevelUpEvent: () => void
-  streakMilestoneEvent: number | null
   clearStreakMilestoneEvent: () => void
-  perfectDayEvent: boolean
   clearPerfectDayEvent: () => void
-  weekSummaryEvent: boolean
   clearWeekSummaryEvent: () => void
-  xpGainEvents: XpGainEvent[]
-  isPerfectDay: boolean
+  clearXpPenaltyEvent: () => void
 }
 
 export const useStore = create<SystemStore>()(
@@ -146,20 +188,29 @@ export const useStore = create<SystemStore>()(
       tasks: [],
       quests: [],
       hasOnboarded: false,
+      tutorialDone: false,
+      darkMode: false,
+      xpPenaltyEnabled: false,
       todaysWins: [],
       weeklyStats: DEFAULT_WEEKLY,
       lastWeekStats: null,
       profileSlots: [],
       activeSlotId: 'default',
+      isPerfectDay: false,
+      dailyActivity: {},
+      dailyChallenge: null,
       rankUpEvent: null,
       levelUpEvent: null,
       streakMilestoneEvent: null,
       perfectDayEvent: false,
       weekSummaryEvent: false,
       xpGainEvents: [],
-      isPerfectDay: false,
+      xpPenaltyEvent: null,
 
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
+      setTutorialDone: () => set({ tutorialDone: true }),
+      toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
+      toggleXpPenalty: () => set((s) => ({ xpPenaltyEnabled: !s.xpPenaltyEnabled })),
 
       updateUsername: (name) =>
         set((s) => ({ profile: { ...s.profile, username: name } })),
@@ -173,10 +224,11 @@ export const useStore = create<SystemStore>()(
           quests: [],
           isPerfectDay: false,
           todaysWins: [],
+          dailyActivity: {},
           weeklyStats: { ...DEFAULT_WEEKLY, weekStart: getWeekStart() },
           profileSlots: s.profileSlots.map(slot =>
             slot.id === activeSlotId
-              ? { ...slot, profile: fresh, tasks: [], quests: [], isPerfectDay: false }
+              ? { ...slot, profile: fresh, tasks: [], quests: [], isPerfectDay: false, dailyActivity: {} }
               : slot
           ),
         }))
@@ -192,11 +244,14 @@ export const useStore = create<SystemStore>()(
       },
 
       completeTask: (taskId, x, y) => {
-        const { tasks, profile, isPerfectDay } = get()
+        const { tasks, profile, quests, isPerfectDay, dailyActivity } = get()
         const task = tasks.find((t) => t.id === taskId)
         if (!task) return
 
-        const xpGained = isPerfectDay ? task.xp_value * 2 : task.xp_value
+        const maxStreak = quests.length > 0 ? Math.max(...quests.map(q => q.current_streak)) : 0
+        const multiplier = getStreakMultiplier(maxStreak)
+        const baseXp = isPerfectDay ? task.xp_value * 2 : task.xp_value
+        const xpGained = Math.round(baseXp * multiplier)
         const eventId = xpEventId++
         haptic([10, 50, 10])
         sounds.taskComplete()
@@ -210,7 +265,12 @@ export const useStore = create<SystemStore>()(
         set((s) => ({
           tasks: s.tasks.filter((t) => t.id !== taskId),
           todaysWins: [completedEntry, ...s.todaysWins],
-          weeklyStats: { ...s.weeklyStats, xpEarned: s.weeklyStats.xpEarned + xpGained, tasksCompleted: s.weeklyStats.tasksCompleted + 1 },
+          dailyActivity: updateActivity(dailyActivity, 'tasks'),
+          weeklyStats: {
+            ...s.weeklyStats,
+            xpEarned: s.weeklyStats.xpEarned + xpGained,
+            tasksCompleted: s.weeklyStats.tasksCompleted + 1,
+          },
           xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
@@ -246,18 +306,24 @@ export const useStore = create<SystemStore>()(
       },
 
       completeQuest: (questId, x, y) => {
-        const { quests, profile, isPerfectDay } = get()
+        const { quests, profile, isPerfectDay, dailyActivity } = get()
         const quest = quests.find((q) => q.id === questId)
         if (!quest || quest.completed_today) return
 
         haptic(10)
         sounds.habitComplete()
 
-        const xpGained = isPerfectDay ? QUEST_XP * 2 : QUEST_XP
+        const maxStreak = Math.max(...quests.map(q => q.current_streak))
+        const multiplier = getStreakMultiplier(maxStreak)
+        const baseXp = isPerfectDay ? QUEST_XP * 2 : QUEST_XP
+        const xpGained = Math.round(baseXp * multiplier)
+
         const todayStr = today()
         let newStreak = 1
         if (quest.last_completed_at) {
-          const diff = Math.floor((new Date(todayStr).getTime() - new Date(quest.last_completed_at).getTime()) / 86400000)
+          const diff = Math.floor(
+            (new Date(todayStr).getTime() - new Date(quest.last_completed_at).getTime()) / 86400000
+          )
           newStreak = diff === 1 ? quest.current_streak + 1 : 1
         }
 
@@ -274,7 +340,12 @@ export const useStore = create<SystemStore>()(
           quests: updated,
           isPerfectDay: newIsPerfectDay,
           perfectDayEvent: !wasPerfect && newIsPerfectDay,
-          weeklyStats: { ...s.weeklyStats, xpEarned: s.weeklyStats.xpEarned + xpGained, habitsCompleted: s.weeklyStats.habitsCompleted + 1 },
+          dailyActivity: updateActivity(dailyActivity, 'habits'),
+          weeklyStats: {
+            ...s.weeklyStats,
+            xpEarned: s.weeklyStats.xpEarned + xpGained,
+            habitsCompleted: s.weeklyStats.habitsCompleted + 1,
+          },
           xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
@@ -300,10 +371,58 @@ export const useStore = create<SystemStore>()(
       deleteQuest: (questId) =>
         set((s) => ({ quests: s.quests.filter((q) => q.id !== questId), isPerfectDay: false })),
 
+      reorderQuests: (newOrder) => set({ quests: newOrder }),
+
+      updateQuestText: (questId, newText) =>
+        set((s) => ({
+          quests: s.quests.map((q) => q.id === questId ? { ...q, quest_text: newText } : q),
+        })),
+
+      completeDailyChallenge: (x, y) => {
+        const { dailyChallenge, profile, quests, isPerfectDay, dailyActivity } = get()
+        if (!dailyChallenge || dailyChallenge.completed) return
+
+        haptic([10, 50, 10])
+        sounds.taskComplete()
+
+        const maxStreak = quests.length > 0 ? Math.max(...quests.map(q => q.current_streak)) : 0
+        const multiplier = getStreakMultiplier(maxStreak)
+        const baseXp = isPerfectDay ? DAILY_CHALLENGE_XP * 2 : DAILY_CHALLENGE_XP
+        const xpGained = Math.round(baseXp * multiplier)
+        const eventId = xpEventId++
+
+        set((s) => ({
+          dailyChallenge: { ...s.dailyChallenge!, completed: true },
+          dailyActivity: updateActivity(dailyActivity, 'tasks'),
+          weeklyStats: {
+            ...s.weeklyStats,
+            xpEarned: s.weeklyStats.xpEarned + xpGained,
+            tasksCompleted: s.weeklyStats.tasksCompleted + 1,
+          },
+          xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
+        }))
+        setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
+
+        const { newProfile, leveledUp, rankedUp } = applyXp(profile, xpGained)
+        set({ profile: newProfile })
+
+        if (rankedUp) {
+          sounds.rankUp()
+          haptic([50, 30, 50, 30, 100])
+          set({ rankUpEvent: { fromRank: profile.hunter_rank, toRank: newProfile.hunter_rank, level: newProfile.level } })
+        } else if (leveledUp) {
+          sounds.levelUp()
+          haptic([50, 30, 50, 30, 100])
+          set({ levelUpEvent: newProfile.level })
+        }
+      },
+
       switchProfile: (slotId) => {
-        const { profile, tasks, quests, isPerfectDay, profileSlots, activeSlotId } = get()
+        const { profile, tasks, quests, isPerfectDay, dailyActivity, profileSlots, activeSlotId } = get()
         const updatedSlots = profileSlots.map(slot =>
-          slot.id === activeSlotId ? { ...slot, profile, tasks, quests, isPerfectDay } : slot
+          slot.id === activeSlotId
+            ? { ...slot, profile, tasks, quests, isPerfectDay, dailyActivity }
+            : slot
         )
         const newSlot = updatedSlots.find(s => s.id === slotId)
         if (!newSlot) return
@@ -314,20 +433,23 @@ export const useStore = create<SystemStore>()(
           tasks: newSlot.tasks,
           quests: newSlot.quests,
           isPerfectDay: newSlot.isPerfectDay,
+          dailyActivity: newSlot.dailyActivity || {},
           todaysWins: [],
         })
       },
 
       createProfile: (name) => {
-        const { profile, tasks, quests, isPerfectDay, profileSlots, activeSlotId } = get()
+        const { profile, tasks, quests, isPerfectDay, dailyActivity, profileSlots, activeSlotId } = get()
         if (profileSlots.length >= 3) return
         const newId = crypto.randomUUID()
         const newProfile: LocalProfile = { ...DEFAULT_PROFILE, username: name }
         const updatedSlots = [
           ...profileSlots.map(slot =>
-            slot.id === activeSlotId ? { ...slot, profile, tasks, quests, isPerfectDay } : slot
+            slot.id === activeSlotId
+              ? { ...slot, profile, tasks, quests, isPerfectDay, dailyActivity }
+              : slot
           ),
-          { id: newId, profile: newProfile, tasks: [], quests: [], isPerfectDay: false },
+          { id: newId, profile: newProfile, tasks: [], quests: [], isPerfectDay: false, dailyActivity: {} },
         ]
         set({
           profileSlots: updatedSlots,
@@ -336,6 +458,7 @@ export const useStore = create<SystemStore>()(
           tasks: [],
           quests: [],
           isPerfectDay: false,
+          dailyActivity: {},
           todaysWins: [],
         })
       },
@@ -346,7 +469,15 @@ export const useStore = create<SystemStore>()(
         const remaining = profileSlots.filter(s => s.id !== slotId)
         if (activeSlotId === slotId) {
           const next = remaining[0]
-          set({ profileSlots: remaining, activeSlotId: next.id, profile: next.profile, tasks: next.tasks, quests: next.quests, isPerfectDay: next.isPerfectDay })
+          set({
+            profileSlots: remaining,
+            activeSlotId: next.id,
+            profile: next.profile,
+            tasks: next.tasks,
+            quests: next.quests,
+            isPerfectDay: next.isPerfectDay,
+            dailyActivity: next.dailyActivity || {},
+          })
         } else {
           set({ profileSlots: remaining })
         }
@@ -357,6 +488,7 @@ export const useStore = create<SystemStore>()(
       clearStreakMilestoneEvent: () => set({ streakMilestoneEvent: null }),
       clearPerfectDayEvent: () => set({ perfectDayEvent: false }),
       clearWeekSummaryEvent: () => set({ weekSummaryEvent: false }),
+      clearXpPenaltyEvent: () => set({ xpPenaltyEvent: null }),
     }),
     {
       name: 'the-system',
@@ -366,10 +498,12 @@ export const useStore = create<SystemStore>()(
         const weekStart = getWeekStart()
 
         // Reset quests daily
-        state.quests = state.quests.map((q) => {
+        state.quests = (state.quests || []).map((q) => {
           if (q.last_completed_at === todayStr) return q
           if (q.last_completed_at) {
-            const diff = Math.floor((new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000)
+            const diff = Math.floor(
+              (new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000
+            )
             if (diff >= 2) return { ...q, completed_today: false, current_streak: 0 }
           }
           return { ...q, completed_today: false }
@@ -389,12 +523,55 @@ export const useStore = create<SystemStore>()(
           }
         }
 
+        // Daily challenge — reset each day
+        if (!state.dailyChallenge || state.dailyChallenge.date !== todayStr) {
+          state.dailyChallenge = { text: getDailyChallenge(todayStr), completed: false, date: todayStr }
+        }
+
+        // XP penalty — if enabled and user missed habits yesterday
+        if (state.xpPenaltyEnabled) {
+          const yesterday = new Date(todayStr)
+          yesterday.setDate(yesterday.getDate() - 1)
+          const yesterdayStr = yesterday.toISOString().split('T')[0]
+          const activity = state.dailyActivity || {}
+          const hasHistory = Object.keys(activity).some(d => d < todayStr)
+          if (hasHistory) {
+            const yday = activity[yesterdayStr]
+            if (!yday || yday.habits === 0) {
+              const penalty = Math.min(50, Math.floor(getXpForLevel(state.profile.level) * 0.05))
+              if (penalty > 0) {
+                state.profile.current_xp = Math.max(0, state.profile.current_xp - penalty)
+                state.xpPenaltyEvent = penalty
+              }
+            }
+          }
+        }
+
         // Initialize profile slots for existing users
         if (!state.profileSlots || state.profileSlots.length === 0) {
           const slotId = 'default'
-          state.profileSlots = [{ id: slotId, profile: state.profile, tasks: state.tasks, quests: state.quests, isPerfectDay: state.isPerfectDay }]
+          state.profileSlots = [{
+            id: slotId,
+            profile: state.profile,
+            tasks: state.tasks,
+            quests: state.quests,
+            isPerfectDay: state.isPerfectDay,
+            dailyActivity: state.dailyActivity || {},
+          }]
           state.activeSlotId = slotId
         }
+
+        // Migrate existing slots to include dailyActivity if missing
+        state.profileSlots = state.profileSlots.map(slot => ({
+          ...slot,
+          dailyActivity: slot.dailyActivity || {},
+        }))
+
+        // Init new fields for existing users
+        if (state.dailyActivity === undefined) state.dailyActivity = {}
+        if (state.tutorialDone === undefined) state.tutorialDone = true // don't show tutorial to existing users
+        if (state.darkMode === undefined) state.darkMode = false
+        if (state.xpPenaltyEnabled === undefined) state.xpPenaltyEnabled = false
       },
     }
   )

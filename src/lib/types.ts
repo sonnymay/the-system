@@ -102,3 +102,66 @@ export function getLevelProgress(level: number, currentXp: number): { current: n
   const percent = Math.min(100, Math.floor((currentXp / needed) * 100))
   return { current: currentXp, needed, percent }
 }
+
+export function getStreakMultiplier(maxStreak: number): number {
+  if (maxStreak >= 14) return 1.5
+  if (maxStreak >= 7) return 1.25
+  if (maxStreak >= 3) return 1.1
+  return 1.0
+}
+
+export const DAILY_CHALLENGE_XP = 75
+
+export const DAILY_CHALLENGES = [
+  'Drink 8 glasses of water',
+  'Do 20 minutes of exercise',
+  'Read for 15 minutes',
+  'Meditate for 5 minutes',
+  'Write 3 things you\'re grateful for',
+  'Take a 10-minute walk outside',
+  'Stretch for 10 minutes',
+  'Plan tomorrow\'s top 3 priorities',
+  'Call or message someone you care about',
+  'Learn one new thing today',
+  'No social media before noon',
+  'Go to sleep before midnight',
+  'Eat at least one healthy meal',
+  'Do 10 push-ups',
+  'Organize your workspace',
+  'Review your goals for 5 minutes',
+  'Take a cold shower',
+  'Write in a journal',
+  'Cook a meal at home',
+  'Practice deep breathing for 5 minutes',
+  'Do 20 minutes of focused work with no distractions',
+  'Spend 10 minutes in sunlight',
+  'Avoid processed food today',
+  'Stand up and move every hour',
+  'Write down one thing you\'re proud of',
+]
+
+export function getDailyChallenge(dateStr: string): string {
+  const hash = dateStr.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return DAILY_CHALLENGES[hash % DAILY_CHALLENGES.length]
+}
+
+export interface Achievement {
+  id: string
+  name: string
+  icon: string
+  description: string
+}
+
+export const ACHIEVEMENTS: Achievement[] = [
+  { id: 'first_task',   name: 'First Blood',     icon: '⚔️',  description: 'Complete your first task' },
+  { id: 'first_habit',  name: 'Creature of Habit', icon: '🌱', description: 'Complete a daily habit' },
+  { id: 'streak_3',     name: 'On Fire',          icon: '🔥',  description: '3-day habit streak' },
+  { id: 'streak_7',     name: 'Week Warrior',     icon: '🗓️', description: '7-day habit streak' },
+  { id: 'streak_30',    name: 'Iron Will',        icon: '💪',  description: '30-day habit streak' },
+  { id: 'tasks_10',     name: 'Grinder',          icon: '⚙️', description: 'Complete 10 tasks' },
+  { id: 'tasks_50',     name: 'Veteran',          icon: '🏅',  description: 'Complete 50 tasks' },
+  { id: 'perfect_day',  name: 'Perfect Day',      icon: '✨',  description: 'Complete all habits in a day' },
+  { id: 'multiplier',   name: 'In the Zone',      icon: '⚡',  description: 'Earn an XP multiplier' },
+  { id: 'level_20',     name: 'Rising Hunter',    icon: '📈',  description: 'Reach level 20' },
+  { id: 's_rank',       name: 'Shadow Monarch',   icon: '👑',  description: 'Reach S-Rank' },
+]
