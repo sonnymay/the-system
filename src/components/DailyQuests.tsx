@@ -221,16 +221,18 @@ export default function DailyQuests() {
         )}
 
         {canAdd && (
-          <form onSubmit={handleAdd} className="flex items-center gap-3 px-5 py-3.5 border-t" style={{ borderColor: t.border }}>
-            <div className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-dashed" style={{ borderColor: t.textMuted }} />
+          <form onSubmit={handleAdd} className="flex items-center gap-3 px-4 py-3 border-t mx-3 mb-3 mt-1 rounded-xl" style={{ borderColor: t.border, borderWidth: '1.5px', borderStyle: 'dashed', background: t.cardAlt }}>
             <input type="text" value={newText} onChange={(e) => setNewText(e.target.value)}
               placeholder={quests.length === 0 ? 'Add your first habit…' : 'Add a habit…'}
-              className="flex-1 text-sm bg-transparent outline-none"
+              className="flex-1 text-sm bg-transparent outline-none font-medium"
               style={{ color: t.text }} />
-            {newText.trim() && (
-              <button type="submit" className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
-                style={{ background: t.buttonBg, color: t.textSub }}>Add</button>
-            )}
+            <button
+              type="submit"
+              className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-lg leading-none transition-all"
+              style={{ background: newText.trim() ? '#10b981' : t.textMuted, transform: newText.trim() ? 'scale(1.05)' : 'scale(1)' }}
+            >
+              +
+            </button>
           </form>
         )}
       </div>

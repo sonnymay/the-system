@@ -75,19 +75,26 @@ export default function TaskList() {
         )}
       </div>
 
-      <form onSubmit={handleAdd} className="flex items-center gap-3 px-5 py-3.5 border-t" style={{ borderColor: t.border }}>
+      <form onSubmit={handleAdd} className="flex items-center gap-3 px-4 py-3 border-t mx-3 mb-3 mt-1 rounded-xl" style={{ borderColor: t.border, borderWidth: '1.5px', borderStyle: 'dashed', background: t.cardAlt }}>
         <button type="button" onClick={cycleDifficulty}
-          className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg transition-colors"
-          style={{ background: DIFFICULTY_COLORS[difficulty] + '15', color: DIFFICULTY_COLORS[difficulty] }}>
+          className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors"
+          style={{ background: DIFFICULTY_COLORS[difficulty] + '18', color: DIFFICULTY_COLORS[difficulty] }}>
           <span>{ICONS[difficulty]}</span>
           <span>{LABELS[difficulty]}</span>
         </button>
         <input ref={inputRef} type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-          placeholder="Add a task…" className="flex-1 text-sm bg-transparent outline-none"
+          placeholder="Add a task…" className="flex-1 text-sm bg-transparent outline-none font-medium"
           style={{ color: t.text }} />
-        <span className="text-xs font-medium flex-shrink-0" style={{ color: DIFFICULTY_COLORS[difficulty] }}>
-          +{isPerfectDay ? XP_VALUES[difficulty] * 2 : XP_VALUES[difficulty]} XP
+        <span className="text-xs font-semibold flex-shrink-0" style={{ color: DIFFICULTY_COLORS[difficulty] }}>
+          +{isPerfectDay ? XP_VALUES[difficulty] * 2 : XP_VALUES[difficulty]}
         </span>
+        <button
+          type="submit"
+          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-lg leading-none transition-all"
+          style={{ background: title.trim() ? DIFFICULTY_COLORS[difficulty] : t.textMuted, transform: title.trim() ? 'scale(1.05)' : 'scale(1)' }}
+        >
+          +
+        </button>
       </form>
 
       <div className="border-t" style={{ borderColor: t.border }}>
