@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Moon, Sun } from 'lucide-react'
 import HunterCard from '../components/HunterCard'
 import DailyQuests from '../components/DailyQuests'
 import TaskList from '../components/TaskList'
@@ -39,6 +40,8 @@ function PenaltyToast() {
 
 export default function Dashboard() {
   const t = useTheme()
+  const darkMode = useStore((s) => s.darkMode)
+  const toggleDarkMode = useStore((s) => s.toggleDarkMode)
 
   return (
     <>
@@ -58,7 +61,20 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
             className="px-1 pb-2 flex items-center justify-between">
             <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: t.textMuted }}>The System</p>
-            <SettingsModal />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleDarkMode}
+                className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+                style={{ background: t.buttonBg }}
+                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {darkMode
+                  ? <Sun size={15} style={{ color: '#f59e0b' }} />
+                  : <Moon size={15} style={{ color: t.textSub }} />
+                }
+              </button>
+              <SettingsModal />
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>

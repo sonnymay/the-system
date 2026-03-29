@@ -1,10 +1,33 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, Reorder, useDragControls } from 'framer-motion'
 import { Flame, GripVertical } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { LocalQuest } from '../store/useStore'
 import { QUEST_XP, DAILY_CHALLENGE_XP } from '../lib/types'
 import { useTheme } from '../lib/theme'
+
+function useTimeUntilMidnight() {
+  const [label, setLabel] = useState('')
+  const [urgent, setUrgent] = useState(false)
+
+  useEffect(() => {
+    function update() {
+      const now = new Date()
+      const midnight = new Date()
+      midnight.setHours(24, 0, 0, 0)
+      const diffMs = midnight.getTime() - now.getTime()
+      const h = Math.floor(diffMs / 3600000)
+      const m = Math.floor((diffMs % 3600000) / 60000)
+      setUrgent(h < 2)
+      setLabel(h > 0 ? `${h}h ${m}m left` : `${m}m left`)
+    }
+    update()
+    const id = setInterval(update, 60000)
+    return () => clearInterval(id)
+  }, [])
+
+  return { label, urgent }
+}
 
 function useHoldPress(onHold: () => void, delay = 600) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -162,6 +185,7 @@ export default function DailyQuests() {
   const [newText, setNewText] = useState('')
   const canAdd = quests.length < 3
   const doneCount = quests.filter((q) => q.completed_today).length
+  const { label: timeLabel, urgent: timeUrgent } = useTimeUntilMidnight()
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -180,17 +204,30 @@ export default function DailyQuests() {
           : undefined,
       }}
     >
-      <div className="px-5 py-4 flex items-center justify-between">
+      <div className="px-5 py-4 flex items-center justify-between gap-2">
         <p className="font-semibold" style={{ color: t.text }}>Daily Habits</p>
-        {quests.length > 0 && (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full"
-            style={{
-              background: doneCount === quests.length ? '#d1fae5' : t.buttonBg,
-              color: doneCount === quests.length ? '#059669' : t.textMuted,
-            }}>
-            {doneCount}/{quests.length}
-          </span>
-        )}
+        <div className="flex items-center gap-2 ml-auto">
+          {timeLabel && (
+            <span
+              className="text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{
+                background: timeUrgent ? '#fee2e2' : t.buttonBg,
+                color: timeUrgent ? '#dc2626' : t.textMuted,
+              }}
+            >
+              🕛 {timeLabel}
+            </span>
+          )}
+          {quests.length > 0 && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{
+                background: doneCount === quests.length ? '#d1fae5' : t.buttonBg,
+                color: doneCount === quests.length ? '#059669' : t.textMuted,
+              }}>
+              {doneCount}/{quests.length}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="border-t" style={{ borderColor: t.border }}>
