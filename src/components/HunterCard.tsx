@@ -9,7 +9,7 @@ const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   D: '/ranks/d-rank.png',
   C: '/ranks/c-rank.png',
   B: '/ranks/b-rank.png',
-  // A: '/ranks/a-rank.png',
+  A: '/ranks/a-rank.png',
   // S: '/ranks/s-rank.png',
 }
 
