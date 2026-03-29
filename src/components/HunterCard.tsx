@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { Share2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { HunterRank } from '../lib/types'
 import { RANK_CONFIG, getLevelProgress } from '../lib/types'
+import { shareHunterCard } from '../lib/shareCard'
 
 const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   E: '/ranks/e-rank.png',
@@ -23,12 +25,12 @@ export default function HunterCard() {
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState(profile.username)
+  const [sharing, setSharing] = useState(false)
 
   const rank = profile.hunter_rank as HunterRank
   const rc = RANK_CONFIG[rank]
   const progress = getLevelProgress(profile.level, profile.current_xp)
   const image = RANK_IMAGES[rank]
-
   const maxStreak = quests.length > 0 ? Math.max(...quests.map((q) => q.current_streak)) : 0
 
   const nextRankIdx = RANKS.indexOf(rank) + 1
@@ -42,43 +44,35 @@ export default function HunterCard() {
     setEditing(false)
   }
 
+  async function handleShare() {
+    setSharing(true)
+    await shareHunterCard(profile, maxStreak, progress.percent)
+    setSharing(false)
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
 
       {/* Character artwork */}
       {image ? (
         <div className="relative">
-          <img
-            src={image}
-            alt={`${rank}-Rank Hunter`}
-            style={{ display: 'block', width: '100%' }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0"
-            style={{ height: '72px', background: 'linear-gradient(to bottom, transparent, white)' }}
-          />
+          <img src={image} alt={`${rank}-Rank Hunter`} style={{ display: 'block', width: '100%' }} />
+          <div className="absolute bottom-0 left-0 right-0"
+            style={{ height: '72px', background: 'linear-gradient(to bottom, transparent, white)' }} />
           {isPerfectDay && (
             <div className="absolute top-3 right-3">
               <span className="text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm"
-                style={{ background: '#fef3c7', color: '#d97706' }}>
-                ✦ 2× XP
-              </span>
+                style={{ background: '#fef3c7', color: '#d97706' }}>✦ 2× XP</span>
             </div>
           )}
         </div>
       ) : (
         <div className="px-5 pt-5 flex items-center justify-between">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black"
-            style={{ background: rc.color + '15', color: rc.color }}
-          >
-            {rank}
-          </div>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black"
+            style={{ background: rc.color + '15', color: rc.color }}>{rank}</div>
           {isPerfectDay && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: '#fef3c7', color: '#d97706' }}>
-              ✦ 2× XP
-            </span>
+              style={{ background: '#fef3c7', color: '#d97706' }}>✦ 2× XP</span>
           )}
         </div>
       )}
@@ -87,45 +81,42 @@ export default function HunterCard() {
       <div className="px-5 pt-3 pb-5">
         {/* Name row */}
         <div className="flex items-center gap-3 mb-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-            style={{ background: rc.color }}
-          >
-            {rank}
-          </div>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0"
+            style={{ background: rc.color }}>{rank}</div>
           <div className="min-w-0 flex-1">
             {editing ? (
-              <input
-                autoFocus
-                value={nameInput}
+              <input autoFocus value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 onBlur={saveName}
                 onKeyDown={(e) => e.key === 'Enter' && saveName()}
                 className="font-bold text-gray-900 bg-transparent border-b-2 outline-none w-full"
-                style={{ borderColor: rc.color }}
-                maxLength={24}
-              />
+                style={{ borderColor: rc.color }} maxLength={24} />
             ) : (
-              <button
-                onClick={() => { setNameInput(profile.username); setEditing(true) }}
-                className="font-bold text-gray-900 text-left leading-tight block truncate w-full group"
-              >
+              <button onClick={() => { setNameInput(profile.username); setEditing(true) }}
+                className="font-bold text-gray-900 text-left leading-tight block truncate w-full group">
                 {profile.username}
                 <span className="ml-1.5 text-gray-300 text-xs opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
               </button>
             )}
             <p className="text-xs text-gray-400">{rc.title} · Lv {profile.level}</p>
           </div>
+          {/* Share button */}
+          <button onClick={handleShare} disabled={sharing}
+            className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+            style={{ background: '#f3f4f6' }} title="Share card">
+            <Share2 size={13} className="text-gray-400" />
+          </button>
         </div>
 
-        {/* XP bar */}
+        {/* XP bar — key resets animation on level up */}
         <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-1.5">
           <motion.div
+            key={profile.level}
             className="h-full rounded-full"
             style={{ background: rc.color }}
             initial={{ width: 0 }}
             animate={{ width: `${progress.percent}%` }}
-            transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
+            transition={{ duration: 0.9, ease: [0.25, 1, 0.5, 1] }}
           />
         </div>
         <div className="flex justify-between text-xs text-gray-400 mb-4">
