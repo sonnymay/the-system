@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore'
 
 export default function UndoToast() {
   const undoSnapshot = useStore((s) => s.undoSnapshot)
-  const triggerUndo = useStore((s) => s.triggerUndo)
+  const undoCompletion = useStore((s) => s.undoCompletion)
   const clearUndo = useStore((s) => s.clearUndo)
 
   // Auto-dismiss after 5 seconds
@@ -34,7 +34,7 @@ export default function UndoToast() {
             ✓ {undoSnapshot.label} done
           </span>
           <button
-            onClick={triggerUndo}
+            onClick={() => undoCompletion(undoSnapshot.completedId)}
             className="text-sm font-semibold px-3 py-1 rounded-full transition-colors"
             style={{ background: '#374151', color: '#60a5fa' }}
           >

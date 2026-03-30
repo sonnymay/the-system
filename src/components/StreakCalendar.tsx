@@ -1,43 +1,56 @@
 import { useStore } from '../store/useStore'
-import { RANK_CONFIG } from '../lib/types'
-import type { HunterRank } from '../lib/types'
 import { useTheme } from '../lib/theme'
 
 const WEEKS = 13
+// GitHub-style greens
+const GREEN = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353']
+const MISSED = '#7f1d1d'  // deep red for missed days
 
 export default function StreakCalendar() {
   const dailyActivity = useStore((s) => s.dailyActivity)
-  const rank = useStore((s) => s.profile.hunter_rank) as HunterRank
   const t = useTheme()
-  const rc = RANK_CONFIG[rank]
 
-  // Build last WEEKS*7 days
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   const totalDays = WEEKS * 7
-  const days: Array<{ date: string; habits: number }> = []
+  const days: Array<{ date: string; habits: number; missed: boolean }> = []
+
+  // Determine the earliest date we have any activity for context
+  const activityDates = Object.keys(dailyActivity).sort()
+  const firstActivityDate = activityDates[0] ?? null
+
   for (let i = totalDays - 1; i >= 0; i--) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
     const dateStr = d.toISOString().split('T')[0]
-    days.push({ date: dateStr, habits: dailyActivity[dateStr]?.habits ?? 0 })
+    const habits = dailyActivity[dateStr]?.habits ?? 0
+    // "Missed" = day is in the past, user had started tracking (first activity exists),
+    // and no habits were completed that day
+    const isPast = i > 0  // not today
+    const afterStart = firstActivityDate !== null && dateStr >= firstActivityDate
+    const missed = isPast && afterStart && habits === 0
+    days.push({ date: dateStr, habits, missed })
   }
 
-  // Group into columns (each column = 7 days, oldest on left)
   const weeks: Array<typeof days> = []
   for (let w = 0; w < WEEKS; w++) {
     weeks.push(days.slice(w * 7, (w + 1) * 7))
   }
 
-  const totalActive = days.filter(d => d.habits > 0).length
-  const totalPerfect = days.filter(d => d.habits >= 3).length
+  const totalActive = days.filter((d) => d.habits > 0).length
+  const totalPerfect = days.filter((d) => d.habits >= 3).length
 
-  function cellColor(habits: number): string {
-    if (habits === 0) return t.border
-    if (habits === 1) return rc.color + '40'
-    if (habits === 2) return rc.color + '80'
-    return rc.color
+  function cellColor(day: { habits: number; missed: boolean; date: string }): string {
+    const isToday = day.date === today.toISOString().split('T')[0]
+    if (day.habits === 0) {
+      if (day.missed) return MISSED
+      return t.darkMode ? '#161b22' : '#ebedf0'  // empty but not missed
+    }
+    if (day.habits === 1) return GREEN[2]
+    if (day.habits === 2) return GREEN[3]
+    if (day.habits >= 3) return GREEN[4]
+    return isToday ? GREEN[1] : GREEN[0]
   }
 
   return (
@@ -46,7 +59,7 @@ export default function StreakCalendar() {
         <p className="font-semibold text-sm" style={{ color: t.text }}>Activity</p>
         <div className="flex items-center gap-3 text-xs" style={{ color: t.textMuted }}>
           <span>{totalActive} active days</span>
-          {totalPerfect > 0 && <span style={{ color: rc.color }}>✦ {totalPerfect} perfect</span>}
+          {totalPerfect > 0 && <span style={{ color: '#39d353' }}>✦ {totalPerfect} perfect</span>}
         </div>
       </div>
 
@@ -57,8 +70,8 @@ export default function StreakCalendar() {
               <div
                 key={day.date}
                 className="rounded-sm"
-                style={{ background: cellColor(day.habits), aspectRatio: '1', minHeight: '10px' }}
-                title={`${day.date}: ${day.habits} habit${day.habits !== 1 ? 's' : ''}`}
+                style={{ background: cellColor(day), aspectRatio: '1', minHeight: '10px' }}
+                title={`${day.date}: ${day.habits} habit${day.habits !== 1 ? 's' : ''}${day.missed ? ' (missed)' : ''}`}
               />
             ))}
           </div>
@@ -68,20 +81,20 @@ export default function StreakCalendar() {
       {/* Legend */}
       <div className="flex items-center gap-3 mt-2.5 text-xs" style={{ color: t.textMuted }}>
         <div className="flex items-center gap-1">
-          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: t.border }} />
-          <span>None</span>
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: MISSED }} />
+          <span>Missed</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: rc.color + '40' }} />
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: GREEN[2] }} />
           <span>1</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: rc.color + '80' }} />
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: GREEN[3] }} />
           <span>2</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: rc.color }} />
-          <span>Perfect</span>
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: GREEN[4] }} />
+          <span>3+</span>
         </div>
       </div>
     </div>
