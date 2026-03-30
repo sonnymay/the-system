@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Share2, X } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { HunterRank } from '../lib/types'
-import { RANK_CONFIG, getLevelProgress, getStreakMultiplier, ACHIEVEMENTS } from '../lib/types'
+import { RANK_CONFIG, getLevelProgress, getStreakMultiplier, ACHIEVEMENTS, getDailyMotivationalQuote } from '../lib/types'
 import { shareHunterCard } from '../lib/shareCard'
 import { useTheme } from '../lib/theme'
 
@@ -37,6 +37,8 @@ export default function HunterCard() {
   const image = RANK_IMAGES[rank]
   const maxStreak = quests.length > 0 ? Math.max(...quests.map((q) => q.current_streak)) : 0
   const multiplier = getStreakMultiplier(maxStreak)
+
+  const todayQuote = getDailyMotivationalQuote(new Date().toISOString().split('T')[0])
 
   const nextRankIdx = RANKS.indexOf(rank) + 1
   const nextRank = nextRankIdx < RANKS.length ? RANKS[nextRankIdx] : null
@@ -207,10 +209,12 @@ export default function HunterCard() {
           {!nextRank && <span className="ml-auto font-medium" style={{ color: rc.color }}>MAX RANK</span>}
         </div>
 
-        {/* Identity quote */}
-        <p className="text-xs mt-2.5 italic" style={{ color: rc.color + '99' }}>
-          "{rc.identity}"
-        </p>
+        {/* Daily motivational quote */}
+        <div className="mt-2.5 px-3 py-2 rounded-xl" style={{ background: t.cardAlt }}>
+          <p className="text-xs italic leading-relaxed" style={{ color: t.textSub }}>
+            "{todayQuote}"
+          </p>
+        </div>
       </div>
 
       {/* Rank Info Modal */}

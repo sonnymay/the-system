@@ -18,6 +18,7 @@ import UndoToast from '../components/UndoToast'
 import ComboToast from '../components/ComboToast'
 import LuckyStrikeToast from '../components/LuckyStrikeToast'
 import LoginBonusToast from '../components/LoginBonusToast'
+import FreezeToast from '../components/FreezeToast'
 import { useTheme } from '../lib/theme'
 import { useStore } from '../store/useStore'
 
@@ -61,6 +62,7 @@ export default function Dashboard() {
       <ComboToast />
       <LuckyStrikeToast />
       <LoginBonusToast />
+      <FreezeToast />
       <XpFloats />
 
       <div className="min-h-screen" style={{ background: t.bg }}>

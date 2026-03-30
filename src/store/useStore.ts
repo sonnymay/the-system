@@ -161,6 +161,11 @@ interface SystemStore {
   loginStreak: number
   lastLoginDate: string | null
 
+  // Streak Freeze power-ups
+  streakFreezes: number              // current freeze count (max 3)
+  freezeUsedEvent: boolean           // show "streak protected" toast
+  freezeEarnedEvent: boolean         // show "freeze earned" toast
+
   // Events
   rankUpEvent: RankUpEvent | null
   levelUpEvent: number | null
@@ -211,6 +216,8 @@ interface SystemStore {
   clearLoginBonusEvent: () => void
   clearComboEvent: () => void
   clearLuckyStrikeEvent: () => void
+  clearFreezeUsedEvent: () => void
+  clearFreezeEarnedEvent: () => void
 }
 
 export const useStore = create<SystemStore>()(
@@ -244,6 +251,9 @@ export const useStore = create<SystemStore>()(
       loginBonusEvent: null,
       comboEvent: null,
       luckyStrikeEvent: null,
+      streakFreezes: 0,
+      freezeUsedEvent: false,
+      freezeEarnedEvent: false,
 
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
       setTutorialDone: () => set({ tutorialDone: true }),
@@ -611,6 +621,8 @@ export const useStore = create<SystemStore>()(
       clearLoginBonusEvent: () => set({ loginBonusEvent: null }),
       clearComboEvent: () => set({ comboEvent: null }),
       clearLuckyStrikeEvent: () => set({ luckyStrikeEvent: null }),
+      clearFreezeUsedEvent: () => set({ freezeUsedEvent: false }),
+      clearFreezeEarnedEvent: () => set({ freezeEarnedEvent: false }),
 
       triggerUndo: () => {
         const snap = get().undoSnapshot
@@ -639,18 +651,47 @@ export const useStore = create<SystemStore>()(
         const todayStr = today()
         const weekStart = getWeekStart()
 
-        // Reset quests daily
-        state.quests = (state.quests || []).map((q) => {
-          if (q.last_completed_at === todayStr) return q
-          if (q.last_completed_at) {
-            const diff = Math.floor(
-              (new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000
-            )
-            if (diff >= 2) return { ...q, completed_today: false, current_streak: 0 }
-          }
-          return { ...q, completed_today: false }
+        // Reset quests daily — with Streak Freeze protection
+        const currentFreezes = state.streakFreezes ?? 0
+        let freezeUsed = false
+        const questsWithBrokenStreaks = (state.quests || []).filter((q) => {
+          if (!q.last_completed_at || q.last_completed_at === todayStr) return false
+          const diff = Math.floor(
+            (new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000
+          )
+          return diff >= 2 && q.current_streak > 0
         })
+
+        if (questsWithBrokenStreaks.length > 0 && currentFreezes > 0) {
+          // Apply freeze: protect all broken streaks with one freeze
+          freezeUsed = true
+          state.streakFreezes = currentFreezes - 1
+          state.freezeUsedEvent = true
+          state.quests = (state.quests || []).map((q) => {
+            if (q.last_completed_at === todayStr) return q
+            if (q.last_completed_at) {
+              const diff = Math.floor(
+                (new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000
+              )
+              // Protect streak — keep current_streak, just reset today's completion
+              if (diff >= 2 && q.current_streak > 0) return { ...q, completed_today: false }
+            }
+            return { ...q, completed_today: false }
+          })
+        } else {
+          state.quests = (state.quests || []).map((q) => {
+            if (q.last_completed_at === todayStr) return q
+            if (q.last_completed_at) {
+              const diff = Math.floor(
+                (new Date(todayStr).getTime() - new Date(q.last_completed_at).getTime()) / 86400000
+              )
+              if (diff >= 2) return { ...q, completed_today: false, current_streak: 0 }
+            }
+            return { ...q, completed_today: false }
+          })
+        }
         state.isPerfectDay = state.quests.length > 0 && state.quests.every((q) => q.completed_today)
+        void freezeUsed // used above, suppressing lint
 
         // Clear today's wins if it's a new day
         state.todaysWins = (state.todaysWins || []).filter(t => t.completed_at.startsWith(todayStr))
@@ -725,6 +766,12 @@ export const useStore = create<SystemStore>()(
           const { newProfile } = applyXp(state.profile, bonusXp)
           state.profile = newProfile
           state.loginBonusEvent = bonusXp
+
+          // Award a Streak Freeze every 7 login days (max 3)
+          if (state.loginStreak > 0 && state.loginStreak % 7 === 0 && (state.streakFreezes ?? 0) < 3) {
+            state.streakFreezes = (state.streakFreezes ?? 0) + 1
+            state.freezeEarnedEvent = true
+          }
         }
 
         // Init new fields for existing users
@@ -734,6 +781,9 @@ export const useStore = create<SystemStore>()(
         if (state.xpPenaltyEnabled === undefined) state.xpPenaltyEnabled = false
         if (state.loginStreak === undefined) state.loginStreak = 0
         if (state.lastLoginDate === undefined) state.lastLoginDate = null
+        if (state.streakFreezes === undefined) state.streakFreezes = 0
+        if (state.freezeUsedEvent === undefined) state.freezeUsedEvent = false
+        if (state.freezeEarnedEvent === undefined) state.freezeEarnedEvent = false
         // Migrate existing quests to include emoji field
         state.quests = (state.quests || []).map(q => q.emoji ? q : { ...q, emoji: '✅' })
       },

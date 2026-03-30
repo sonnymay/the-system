@@ -145,6 +145,44 @@ export function getDailyChallenge(dateStr: string): string {
   return DAILY_CHALLENGES[hash % DAILY_CHALLENGES.length]
 }
 
+export const MOTIVATIONAL_QUOTES = [
+  "Every action is a vote for the person you want to become.",
+  "Small consistent actions compound into extraordinary results.",
+  "Discipline is choosing between what you want now and what you want most.",
+  "You don't rise to the level of your goals — you fall to the level of your systems.",
+  "The secret to getting ahead is getting started.",
+  "Progress, not perfection.",
+  "One more rep. One more page. One more day.",
+  "Your future self is watching you right now.",
+  "Motivation gets you started. Habit keeps you going.",
+  "You are what you repeatedly do.",
+  "The pain of discipline weighs ounces. The pain of regret weighs tons.",
+  "Show up even when you don't feel like it. Especially then.",
+  "Champions aren't made in gyms — they're made from the stuff inside them.",
+  "It always seems impossible until it's done.",
+  "Be the person your dog thinks you are.",
+  "Hard work beats talent when talent doesn't work hard.",
+  "Fall seven times, stand up eight.",
+  "The best time to plant a tree was 20 years ago. The second best time is now.",
+  "Don't count the days — make the days count.",
+  "Success is the sum of small efforts, repeated day in and day out.",
+  "Courage is resistance to fear, not absence of it.",
+  "You miss 100% of the shots you don't take.",
+  "Earn your day.",
+  "Do something today your future self will thank you for.",
+  "Don't wish for it — work for it.",
+  "The harder you work, the luckier you get.",
+  "Energy flows where attention goes.",
+  "Act as if what you do makes a difference. It does.",
+  "Diamonds are formed under pressure.",
+  "Level up every day.",
+]
+
+export function getDailyMotivationalQuote(dateStr: string): string {
+  const hash = dateStr.split('').reduce((acc, c, i) => acc + c.charCodeAt(0) * (i + 7), 0)
+  return MOTIVATIONAL_QUOTES[hash % MOTIVATIONAL_QUOTES.length]
+}
+
 export interface Achievement {
   id: string
   name: string

@@ -247,6 +247,7 @@ export default function DailyQuests() {
   const dailyChallenge = useStore((s) => s.dailyChallenge)
   const completeDailyChallenge = useStore((s) => s.completeDailyChallenge)
   const isPerfectDay = useStore((s) => s.isPerfectDay)
+  const streakFreezes = useStore((s) => s.streakFreezes)
   const t = useTheme()
 
   const [newText, setNewText] = useState('')
@@ -275,7 +276,16 @@ export default function DailyQuests() {
       }}
     >
       <div className="px-5 py-4 flex items-center justify-between gap-2">
-        <p className="font-semibold" style={{ color: t.text }}>Daily Habits</p>
+        <div className="flex items-center gap-2">
+          <p className="font-semibold" style={{ color: t.text }}>Daily Habits</p>
+          {streakFreezes > 0 && (
+            <div className="flex items-center gap-0.5" title={`${streakFreezes} Streak Freeze${streakFreezes > 1 ? 's' : ''} — protects your streak if you miss a day`}>
+              {Array.from({ length: streakFreezes }).map((_, i) => (
+                <span key={i} className="text-sm">🛡️</span>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2 ml-auto">
           {streakAtRisk && (
             <motion.span
