@@ -27,6 +27,7 @@ export interface LocalTask {
 export interface LocalQuest {
   id: string
   quest_text: string
+  emoji: string
   current_streak: number
   last_completed_at: string | null
   completed_today: boolean
@@ -78,7 +79,11 @@ interface UndoSnapshot {
 }
 
 const STREAK_MILESTONES = [7, 14, 30, 60, 100]
+const HABIT_LIMIT = 10
 let xpEventId = 0
+// Combo tracking — module-level so it resets on page reload (intentional)
+let lastCompletionTime = 0
+let comboCount = 0
 
 function today() { return new Date().toISOString().split('T')[0] }
 
@@ -152,6 +157,10 @@ interface SystemStore {
   // Daily challenge (global — same challenge for all profiles each day)
   dailyChallenge: { text: string; completed: boolean; date: string } | null
 
+  // Login streak (global)
+  loginStreak: number
+  lastLoginDate: string | null
+
   // Events
   rankUpEvent: RankUpEvent | null
   levelUpEvent: number | null
@@ -161,6 +170,9 @@ interface SystemStore {
   xpGainEvents: XpGainEvent[]
   xpPenaltyEvent: number | null
   undoSnapshot: UndoSnapshot | null
+  loginBonusEvent: number | null            // XP gained from daily login
+  comboEvent: { count: number; bonusXp: number } | null
+  luckyStrikeEvent: number | null           // bonus XP from lucky strike
 
   // Actions
   updateUsername: (name: string) => void
@@ -179,6 +191,7 @@ interface SystemStore {
   deleteQuest: (questId: string) => void
   reorderQuests: (newOrder: LocalQuest[]) => void
   updateQuestText: (questId: string, newText: string) => void
+  updateQuestEmoji: (questId: string, emoji: string) => void
 
   completeDailyChallenge: (x: number, y: number) => void
 
@@ -195,6 +208,9 @@ interface SystemStore {
   clearPerfectDayEvent: () => void
   clearWeekSummaryEvent: () => void
   clearXpPenaltyEvent: () => void
+  clearLoginBonusEvent: () => void
+  clearComboEvent: () => void
+  clearLuckyStrikeEvent: () => void
 }
 
 export const useStore = create<SystemStore>()(
@@ -223,6 +239,11 @@ export const useStore = create<SystemStore>()(
       xpGainEvents: [],
       xpPenaltyEvent: null,
       undoSnapshot: null,
+      loginStreak: 0,
+      lastLoginDate: null,
+      loginBonusEvent: null,
+      comboEvent: null,
+      luckyStrikeEvent: null,
 
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
       setTutorialDone: () => set({ tutorialDone: true }),
@@ -281,7 +302,20 @@ export const useStore = create<SystemStore>()(
         const maxStreak = quests.length > 0 ? Math.max(...quests.map(q => q.current_streak)) : 0
         const multiplier = getStreakMultiplier(maxStreak)
         const baseXp = isPerfectDay ? task.xp_value * 2 : task.xp_value
-        const xpGained = Math.round(baseXp * multiplier)
+        let xpGained = Math.round(baseXp * multiplier)
+
+        // Lucky Strike — 12% chance for +50% bonus
+        const isLucky = Math.random() < 0.12
+        const luckyBonus = isLucky ? Math.round(xpGained * 0.5) : 0
+        xpGained += luckyBonus
+
+        // Combo tracking
+        const now = Date.now()
+        if (now - lastCompletionTime < 8000) { comboCount++ } else { comboCount = 1 }
+        lastCompletionTime = now
+        const comboBonus = comboCount >= 2 ? (comboCount === 2 ? 10 : comboCount === 3 ? 20 : 30) : 0
+        xpGained += comboBonus
+
         const eventId = xpEventId++
         haptic([10, 50, 10])
         sounds.taskComplete()
@@ -302,6 +336,8 @@ export const useStore = create<SystemStore>()(
             tasksCompleted: s.weeklyStats.tasksCompleted + 1,
           },
           xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
+          luckyStrikeEvent: isLucky ? luckyBonus : s.luckyStrikeEvent,
+          comboEvent: comboCount >= 2 ? { count: comboCount, bonusXp: comboBonus } : s.comboEvent,
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
 
@@ -328,10 +364,10 @@ export const useStore = create<SystemStore>()(
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) })),
 
       addQuest: (text) => {
-        if (get().quests.length >= 3) return
+        if (get().quests.length >= HABIT_LIMIT) return
         set((s) => ({
           quests: [...s.quests, {
-            id: crypto.randomUUID(), quest_text: text,
+            id: crypto.randomUUID(), quest_text: text, emoji: '✅',
             current_streak: 0, last_completed_at: null, completed_today: false,
           }],
         }))
@@ -360,7 +396,23 @@ export const useStore = create<SystemStore>()(
         const maxStreak = Math.max(...quests.map(q => q.current_streak))
         const multiplier = getStreakMultiplier(maxStreak)
         const baseXp = isPerfectDay ? QUEST_XP * 2 : QUEST_XP
-        const xpGained = Math.round(baseXp * multiplier)
+        let xpGained = Math.round(baseXp * multiplier)
+
+        // Lucky Strike — 12% chance for +50% bonus
+        const isLucky = Math.random() < 0.12
+        const luckyBonus = isLucky ? Math.round(xpGained * 0.5) : 0
+        xpGained += luckyBonus
+
+        // Combo — fast successive completions
+        const now = Date.now()
+        if (now - lastCompletionTime < 8000) {
+          comboCount++
+        } else {
+          comboCount = 1
+        }
+        lastCompletionTime = now
+        const comboBonus = comboCount >= 2 ? (comboCount === 2 ? 10 : comboCount === 3 ? 20 : 30) : 0
+        xpGained += comboBonus
 
         const todayStr = today()
         let newStreak = 1
@@ -377,7 +429,7 @@ export const useStore = create<SystemStore>()(
             : q
         )
         const wasPerfect = isPerfectDay
-        const newIsPerfectDay = updated.length === 3 && updated.every((q) => q.completed_today)
+        const newIsPerfectDay = updated.length > 0 && updated.every((q) => q.completed_today)
         const eventId = xpEventId++
 
         set((s) => ({
@@ -391,6 +443,8 @@ export const useStore = create<SystemStore>()(
             habitsCompleted: s.weeklyStats.habitsCompleted + 1,
           },
           xpGainEvents: [...s.xpGainEvents, { id: eventId, amount: xpGained, x, y }],
+          luckyStrikeEvent: isLucky ? luckyBonus : s.luckyStrikeEvent,
+          comboEvent: comboCount >= 2 ? { count: comboCount, bonusXp: comboBonus } : s.comboEvent,
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
 
@@ -422,6 +476,11 @@ export const useStore = create<SystemStore>()(
       updateQuestText: (questId, newText) =>
         set((s) => ({
           quests: s.quests.map((q) => q.id === questId ? { ...q, quest_text: newText } : q),
+        })),
+
+      updateQuestEmoji: (questId, emoji) =>
+        set((s) => ({
+          quests: s.quests.map((q) => q.id === questId ? { ...q, emoji } : q),
         })),
 
       completeDailyChallenge: (x, y) => {
@@ -549,6 +608,9 @@ export const useStore = create<SystemStore>()(
       clearPerfectDayEvent: () => set({ perfectDayEvent: false }),
       clearWeekSummaryEvent: () => set({ weekSummaryEvent: false }),
       clearXpPenaltyEvent: () => set({ xpPenaltyEvent: null }),
+      clearLoginBonusEvent: () => set({ loginBonusEvent: null }),
+      clearComboEvent: () => set({ comboEvent: null }),
+      clearLuckyStrikeEvent: () => set({ luckyStrikeEvent: null }),
 
       triggerUndo: () => {
         const snap = get().undoSnapshot
@@ -588,7 +650,7 @@ export const useStore = create<SystemStore>()(
           }
           return { ...q, completed_today: false }
         })
-        state.isPerfectDay = state.quests.length === 3 && state.quests.every((q) => q.completed_today)
+        state.isPerfectDay = state.quests.length > 0 && state.quests.every((q) => q.completed_today)
 
         // Clear today's wins if it's a new day
         state.todaysWins = (state.todaysWins || []).filter(t => t.completed_at.startsWith(todayStr))
@@ -647,11 +709,33 @@ export const useStore = create<SystemStore>()(
           dailyActivity: slot.dailyActivity || {},
         }))
 
+        // Login streak & daily bonus XP
+        const prevLogin = state.lastLoginDate
+        if (prevLogin !== todayStr) {
+          const yesterday = new Date(todayStr)
+          yesterday.setDate(yesterday.getDate() - 1)
+          const yesterdayStr = yesterday.toISOString().split('T')[0]
+          if (prevLogin === yesterdayStr) {
+            state.loginStreak = (state.loginStreak || 0) + 1
+          } else {
+            state.loginStreak = 1
+          }
+          state.lastLoginDate = todayStr
+          const bonusXp = Math.min(10 + state.loginStreak * 2, 60)
+          const { newProfile } = applyXp(state.profile, bonusXp)
+          state.profile = newProfile
+          state.loginBonusEvent = bonusXp
+        }
+
         // Init new fields for existing users
         if (state.dailyActivity === undefined) state.dailyActivity = {}
         if (state.tutorialDone === undefined) state.tutorialDone = true // don't show tutorial to existing users
         if (state.darkMode === undefined) state.darkMode = false
         if (state.xpPenaltyEnabled === undefined) state.xpPenaltyEnabled = false
+        if (state.loginStreak === undefined) state.loginStreak = 0
+        if (state.lastLoginDate === undefined) state.lastLoginDate = null
+        // Migrate existing quests to include emoji field
+        state.quests = (state.quests || []).map(q => q.emoji ? q : { ...q, emoji: '✅' })
       },
     }
   )

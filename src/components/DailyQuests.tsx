@@ -6,6 +6,13 @@ import type { LocalQuest } from '../store/useStore'
 import { QUEST_XP, DAILY_CHALLENGE_XP } from '../lib/types'
 import { useTheme } from '../lib/theme'
 
+const HABIT_EMOJIS = [
+  '🏃','💪','📚','💧','🧘','🥗','😴','✍️',
+  '🎯','🏋️','🚶','💊','🍎','🎵','🌅','🧹',
+  '💰','🧠','❤️','🌱','⚡','🔥','☕','🎮',
+  '🛁','🌞','🥤','🧴','📝','🎨','🏊','🚴',
+]
+
 function useTimeUntilMidnight() {
   const [label, setLabel] = useState('')
   const [urgent, setUrgent] = useState(false)
@@ -66,6 +73,32 @@ function SwipeableRow({ onDelete, bg, children }: { onDelete: () => void; bg: st
   )
 }
 
+function EmojiPicker({ current, onSelect, onClose }: { current: string; onSelect: (e: string) => void; onClose: () => void }) {
+  const t = useTheme()
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+      transition={{ duration: 0.12 }}
+      className="absolute left-0 top-full z-50 mt-1 rounded-2xl shadow-xl p-2 grid grid-cols-8 gap-0.5"
+      style={{ background: t.card, border: `1px solid ${t.border}`, minWidth: '220px' }}
+      onMouseLeave={onClose}
+    >
+      {HABIT_EMOJIS.map((e) => (
+        <button
+          key={e}
+          onClick={() => { onSelect(e); onClose() }}
+          className="w-7 h-7 text-base flex items-center justify-center rounded-lg transition-colors hover:bg-gray-100"
+          style={{ background: e === current ? t.border : 'transparent' }}
+        >
+          {e}
+        </button>
+      ))}
+    </motion.div>
+  )
+}
+
 function QuestRow({ quest, onComplete, onDelete }: {
   quest: LocalQuest
   onComplete: (x: number, y: number) => void
@@ -73,10 +106,13 @@ function QuestRow({ quest, onComplete, onDelete }: {
 }) {
   const dragControls = useDragControls()
   const updateQuestText = useStore((s) => s.updateQuestText)
+  const updateQuestEmoji = useStore((s) => s.updateQuestEmoji)
   const t = useTheme()
 
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(quest.quest_text)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [justCompleted, setJustCompleted] = useState(false)
 
   const holdHandlers = useHoldPress(() => {
     setEditText(quest.quest_text)
@@ -88,6 +124,14 @@ function QuestRow({ quest, onComplete, onDelete }: {
     if (trimmed) updateQuestText(quest.id, trimmed)
     else setEditText(quest.quest_text)
     setEditing(false)
+  }
+
+  function handleComplete(e: React.MouseEvent) {
+    if (quest.completed_today) return
+    setJustCompleted(true)
+    setTimeout(() => setJustCompleted(false), 600)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    onComplete(rect.x + rect.width / 2, rect.y)
   }
 
   return (
@@ -102,7 +146,7 @@ function QuestRow({ quest, onComplete, onDelete }: {
       exit={{ opacity: 0, height: 0 }}
     >
       <SwipeableRow onDelete={onDelete} bg={t.card}>
-        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b" style={{ borderColor: t.border }}>
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b" style={{ borderColor: t.border }}>
           {/* Drag handle */}
           <div
             onPointerDown={(e) => { e.preventDefault(); dragControls.start(e) }}
@@ -112,14 +156,12 @@ function QuestRow({ quest, onComplete, onDelete }: {
             <GripVertical size={13} style={{ color: t.textMuted }} />
           </div>
 
-          {/* Complete button */}
-          <button
-            onClick={(e) => {
-              if (quest.completed_today) return
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-              onComplete(rect.x + rect.width / 2, rect.y)
-            }}
-            className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+          {/* Complete button — satisfying spring animation */}
+          <motion.button
+            onClick={handleComplete}
+            animate={justCompleted ? { scale: [1, 1.45, 0.9, 1] } : { scale: 1 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center"
             style={{
               borderColor: quest.completed_today ? '#10b981' : '#d1d5db',
               background: quest.completed_today ? '#10b981' : t.card,
@@ -127,11 +169,36 @@ function QuestRow({ quest, onComplete, onDelete }: {
             }}
           >
             {quest.completed_today && (
-              <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+              <motion.svg
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                width="9" height="7" viewBox="0 0 9 7" fill="none"
+              >
                 <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              </motion.svg>
             )}
-          </button>
+          </motion.button>
+
+          {/* Emoji button */}
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="text-base w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
+              style={{ background: showEmojiPicker ? t.border : 'transparent' }}
+              title="Change emoji"
+            >
+              {quest.emoji || '✅'}
+            </button>
+            <AnimatePresence>
+              {showEmojiPicker && (
+                <EmojiPicker
+                  current={quest.emoji || '✅'}
+                  onSelect={(e) => updateQuestEmoji(quest.id, e)}
+                  onClose={() => setShowEmojiPicker(false)}
+                />
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Quest text — long-press to edit */}
           {editing ? (
@@ -183,9 +250,10 @@ export default function DailyQuests() {
   const t = useTheme()
 
   const [newText, setNewText] = useState('')
-  const canAdd = quests.length < 3
+  const canAdd = quests.length < 10
   const doneCount = quests.filter((q) => q.completed_today).length
   const { label: timeLabel, urgent: timeUrgent } = useTimeUntilMidnight()
+  const streakAtRisk = timeUrgent && doneCount < quests.length && quests.length > 0
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -201,13 +269,25 @@ export default function DailyQuests() {
         background: t.card,
         boxShadow: isPerfectDay
           ? '0 0 0 2px #fbbf24, 0 4px 16px rgba(251,191,36,0.15)'
+          : streakAtRisk
+          ? '0 0 0 2px #ef4444, 0 4px 16px rgba(239,68,68,0.12)'
           : undefined,
       }}
     >
       <div className="px-5 py-4 flex items-center justify-between gap-2">
         <p className="font-semibold" style={{ color: t.text }}>Daily Habits</p>
         <div className="flex items-center gap-2 ml-auto">
-          {timeLabel && (
+          {streakAtRisk && (
+            <motion.span
+              animate={{ opacity: [1, 0.4, 1] }}
+              transition={{ repeat: Infinity, duration: 1.2 }}
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: '#fee2e2', color: '#dc2626' }}
+            >
+              ⚠️ Streak at risk!
+            </motion.span>
+          )}
+          {!streakAtRisk && timeLabel && (
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full"
               style={{
@@ -253,20 +333,21 @@ export default function DailyQuests() {
         {quests.length === 0 && (
           <div className="px-5 py-4 text-center">
             <p className="text-sm" style={{ color: t.textSub }}>Build your first habit below.</p>
-            <p className="text-xs mt-0.5" style={{ color: t.textMuted }}>Complete all 3 daily for 2× XP on tasks.</p>
+            <p className="text-xs mt-0.5" style={{ color: t.textMuted }}>Complete all habits to unlock 2× XP on tasks.</p>
           </div>
         )}
 
         {canAdd && (
-          <form onSubmit={handleAdd} className="flex items-center gap-3 px-4 py-3 border-t mx-3 mb-3 mt-1 rounded-xl" style={{ borderColor: t.border, borderWidth: '1.5px', borderStyle: 'dashed', background: t.cardAlt }}>
+          <form onSubmit={handleAdd} className="flex items-center gap-3 px-4 py-3 border-t mx-3 mb-3 mt-1 rounded-xl"
+            style={{ borderColor: t.border, borderWidth: '1.5px', borderStyle: 'dashed', background: t.cardAlt }}>
             <input type="text" value={newText} onChange={(e) => setNewText(e.target.value)}
-              placeholder={quests.length === 0 ? 'Add your first habit…' : 'Add a habit…'}
+              placeholder="Add a habit…"
               className="flex-1 text-sm bg-transparent outline-none font-medium"
               style={{ color: t.text }} />
             <button
               type="submit"
               className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white text-lg leading-none transition-all"
-              style={{ background: newText.trim() ? '#10b981' : t.textMuted, transform: newText.trim() ? 'scale(1.05)' : 'scale(1)' }}
+              style={{ background: newText.trim() ? '#10b981' : t.textMuted }}
             >
               +
             </button>
@@ -284,12 +365,13 @@ export default function DailyQuests() {
                 style={{ background: '#fef3c7', color: '#d97706' }}>+{DAILY_CHALLENGE_XP} XP</span>
             </div>
             <div className="flex items-center gap-3">
-              <button
+              <motion.button
                 onClick={(e) => {
                   if (dailyChallenge.completed) return
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                   completeDailyChallenge(rect.x + rect.width / 2, rect.y)
                 }}
+                whileTap={!dailyChallenge.completed ? { scale: 1.3 } : {}}
                 className="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
                 style={{
                   borderColor: dailyChallenge.completed ? '#f59e0b' : '#d1d5db',
@@ -302,7 +384,7 @@ export default function DailyQuests() {
                     <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
-              </button>
+              </motion.button>
               <span
                 className="flex-1 text-sm"
                 style={{

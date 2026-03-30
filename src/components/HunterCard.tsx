@@ -23,6 +23,7 @@ export default function HunterCard() {
   const quests = useStore((s) => s.quests)
   const isPerfectDay = useStore((s) => s.isPerfectDay)
   const updateUsername = useStore((s) => s.updateUsername)
+  const loginStreak = useStore((s) => s.loginStreak)
   const t = useTheme()
 
   const [editing, setEditing] = useState(false)
@@ -196,6 +197,7 @@ export default function HunterCard() {
         {/* Stats row */}
         <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: t.textMuted }}>
           {maxStreak > 0 && <span>🔥 {maxStreak} day streak</span>}
+          {loginStreak > 1 && <span>📅 {loginStreak} day login</span>}
           <span>⚔️ {profile.total_tasks_completed} done</span>
           {levelsToRankUp !== null && (
             <span className="ml-auto font-medium" style={{ color: RANK_CONFIG[nextRank!].color }}>
