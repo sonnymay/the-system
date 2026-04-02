@@ -1,3 +1,9 @@
+let muted = false
+
+export function setSoundEnabled(v: boolean) {
+  muted = !v
+}
+
 function ac() {
   return new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
 }
@@ -15,6 +21,7 @@ function tone(ctx: AudioContext, freq: number, start: number, duration: number, 
 
 export const sounds = {
   habitComplete() {
+    if (muted) return
     try {
       const ctx = ac()
       tone(ctx, 880, ctx.currentTime, 0.25)
@@ -22,6 +29,7 @@ export const sounds = {
     } catch {}
   },
   taskComplete() {
+    if (muted) return
     try {
       const ctx = ac()
       tone(ctx, 660, ctx.currentTime, 0.15, 0.2)
@@ -30,15 +38,27 @@ export const sounds = {
     } catch {}
   },
   levelUp() {
+    if (muted) return
     try {
       const ctx = ac()
       ;[523, 659, 784, 1047].forEach((f, i) => tone(ctx, f, ctx.currentTime + i * 0.11, 0.3, 0.18))
     } catch {}
   },
   rankUp() {
+    if (muted) return
     try {
       const ctx = ac()
       ;[523, 659, 784, 1047, 1319].forEach((f, i) => tone(ctx, f, ctx.currentTime + i * 0.09, 0.4, 0.22, 'triangle'))
+    } catch {}
+  },
+  bossDefeated() {
+    if (muted) return
+    try {
+      const ctx = ac()
+      // Epic descending + ascending fanfare
+      ;[1047, 880, 784, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
+        tone(ctx, f, ctx.currentTime + i * 0.07, 0.35, 0.2, 'sawtooth')
+      )
     } catch {}
   },
 }

@@ -19,6 +19,8 @@ import ComboToast from '../components/ComboToast'
 import LuckyStrikeToast from '../components/LuckyStrikeToast'
 import LoginBonusToast from '../components/LoginBonusToast'
 import FreezeToast from '../components/FreezeToast'
+import BossBattle from '../components/BossBattle'
+import BossDefeatedToast from '../components/BossDefeatedToast'
 import { useTheme } from '../lib/theme'
 import { useStore } from '../store/useStore'
 
@@ -63,6 +65,7 @@ export default function Dashboard() {
       <LuckyStrikeToast />
       <LoginBonusToast />
       <FreezeToast />
+      <BossDefeatedToast />
       <XpFloats />
 
       <div className="min-h-screen" style={{ background: t.bg }}>
@@ -90,6 +93,7 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
             <HunterCard />
           </motion.div>
+          <BossBattle />
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
             <DailyQuests />
           </motion.div>

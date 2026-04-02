@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Settings, X, Plus, Trash2, Sun, Moon, Download, Upload, AlertTriangle } from 'lucide-react'
+import { Settings, X, Plus, Trash2, Sun, Moon, Download, Upload, AlertTriangle, Volume2, VolumeX } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { RANK_CONFIG } from '../lib/types'
 import type { HunterRank } from '../lib/types'
@@ -21,6 +21,8 @@ export default function SettingsModal() {
   const deleteProfile = useStore((s) => s.deleteProfile)
   const darkMode = useStore((s) => s.darkMode)
   const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+  const soundEnabled = useStore((s) => s.soundEnabled)
+  const toggleSound = useStore((s) => s.toggleSound)
   const xpPenaltyEnabled = useStore((s) => s.xpPenaltyEnabled)
   const toggleXpPenalty = useStore((s) => s.toggleXpPenalty)
 
@@ -134,6 +136,24 @@ export default function SettingsModal() {
                     <span
                       className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
                       style={{ transform: darkMode ? 'translateX(20px)' : 'translateX(0)' }}
+                    />
+                  </button>
+                </div>
+
+                {/* Sound effects */}
+                <div className="flex items-center justify-between p-3 rounded-2xl" style={{ background: t.cardAlt }}>
+                  <div className="flex items-center gap-2.5">
+                    {soundEnabled ? <Volume2 size={15} style={{ color: t.textSub }} /> : <VolumeX size={15} style={{ color: t.textSub }} />}
+                    <span className="text-sm font-medium" style={{ color: t.text }}>Sound Effects</span>
+                  </div>
+                  <button
+                    onClick={toggleSound}
+                    className="relative w-11 h-6 rounded-full transition-colors duration-200"
+                    style={{ background: soundEnabled ? '#6366f1' : '#d1d5db' }}
+                  >
+                    <span
+                      className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                      style={{ transform: soundEnabled ? 'translateX(20px)' : 'translateX(0)' }}
                     />
                   </button>
                 </div>

@@ -3,9 +3,9 @@ import { persist } from 'zustand/middleware'
 import type { HunterRank } from '../lib/types'
 import {
   XP_VALUES, QUEST_XP, DAILY_CHALLENGE_XP,
-  getRankForLevel, getXpForLevel, getDailyChallenge, getStreakMultiplier,
+  getRankForLevel, getXpForLevel, getDailyChallenge, getStreakMultiplier, getWeeklyBoss,
 } from '../lib/types'
-import { sounds } from '../lib/sounds'
+import { sounds, setSoundEnabled } from '../lib/sounds'
 
 export interface LocalProfile {
   username: string
@@ -115,6 +115,29 @@ function applyXp(profile: LocalProfile, xpGained: number) {
   }
 }
 
+type BossState = {
+  name: string; emoji: string; hp: number; maxHp: number
+  xpReward: number; description: string; weekStart: string
+  hits: number; defeated: boolean; bonusApplied: boolean
+} | null
+
+// Deals 1 hit to boss; if just defeated applies XP reward
+function hitBoss(boss: BossState, profile: LocalProfile): { boss: BossState; defeated: boolean; newProfile: LocalProfile } {
+  if (!boss || boss.defeated) return { boss, defeated: false, newProfile: profile }
+  const newHits = boss.hits + 1
+  const justDefeated = newHits >= boss.maxHp && !boss.bonusApplied
+  let newProfile = profile
+  if (justDefeated) {
+    const { newProfile: p } = applyXp(profile, boss.xpReward)
+    newProfile = p
+  }
+  return {
+    boss: { ...boss, hits: newHits, defeated: newHits >= boss.maxHp, bonusApplied: boss.bonusApplied || justDefeated },
+    defeated: justDefeated,
+    newProfile,
+  }
+}
+
 function removeXp(profile: LocalProfile, xpToRemove: number): LocalProfile {
   let newXp = profile.current_xp - xpToRemove
   let newLevel = profile.level
@@ -169,7 +192,11 @@ interface SystemStore {
   hasOnboarded: boolean
   tutorialDone: boolean
   darkMode: boolean
+  soundEnabled: boolean
   xpPenaltyEnabled: boolean
+
+  // Weekly Boss Battle
+  boss: BossState
 
   // Daily challenge (global — same challenge for all profiles each day)
   dailyChallenge: { text: string; completed: boolean; date: string } | null
@@ -195,6 +222,7 @@ interface SystemStore {
   loginBonusEvent: number | null            // XP gained from daily login
   comboEvent: { count: number; bonusXp: number } | null
   luckyStrikeEvent: number | null           // bonus XP from lucky strike
+  bossDefeatedEvent: boolean
 
   // Actions
   updateUsername: (name: string) => void
@@ -202,6 +230,7 @@ interface SystemStore {
   setTutorialDone: () => void
   resetProgress: () => void
   toggleDarkMode: () => void
+  toggleSound: () => void
   toggleXpPenalty: () => void
 
   addTask: (title: string, difficulty: string) => void
@@ -235,6 +264,7 @@ interface SystemStore {
   clearLuckyStrikeEvent: () => void
   clearFreezeUsedEvent: () => void
   clearFreezeEarnedEvent: () => void
+  clearBossDefeatedEvent: () => void
 }
 
 export const useStore = create<SystemStore>()(
@@ -268,13 +298,17 @@ export const useStore = create<SystemStore>()(
       loginBonusEvent: null,
       comboEvent: null,
       luckyStrikeEvent: null,
+      bossDefeatedEvent: false,
       streakFreezes: 0,
       freezeUsedEvent: false,
       freezeEarnedEvent: false,
+      soundEnabled: true,
+      boss: null,
 
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
       setTutorialDone: () => set({ tutorialDone: true }),
       toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
+      toggleSound: () => set((s) => { setSoundEnabled(!s.soundEnabled); return { soundEnabled: !s.soundEnabled } }),
       toggleXpPenalty: () => set((s) => ({ xpPenaltyEnabled: !s.xpPenaltyEnabled })),
 
       updateUsername: (name) =>
@@ -358,11 +392,13 @@ export const useStore = create<SystemStore>()(
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
 
-        const { newProfile, leveledUp, rankedUp } = applyXp(
+        const { newProfile: profileWithXp, leveledUp, rankedUp } = applyXp(
           { ...profile, total_tasks_completed: profile.total_tasks_completed + 1 },
           xpGained
         )
-        set({ profile: newProfile })
+        const { boss: newBoss, defeated: bossJustDefeated, newProfile } = hitBoss(get().boss, profileWithXp)
+        set({ profile: newProfile, boss: newBoss })
+        if (bossJustDefeated) { sounds.bossDefeated(); haptic([100, 50, 100, 50, 200]); set({ bossDefeatedEvent: true }) }
 
         if (rankedUp) {
           sounds.rankUp()
@@ -468,8 +504,10 @@ export const useStore = create<SystemStore>()(
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
 
-        const { newProfile, leveledUp, rankedUp } = applyXp(profile, xpGained)
-        set({ profile: newProfile })
+        const { newProfile: profileWithXp, leveledUp, rankedUp } = applyXp(profile, xpGained)
+        const { boss: newBoss, defeated: bossJustDefeated, newProfile } = hitBoss(get().boss, profileWithXp)
+        set({ profile: newProfile, boss: newBoss })
+        if (bossJustDefeated) { sounds.bossDefeated(); haptic([100, 50, 100, 50, 200]); set({ bossDefeatedEvent: true }) }
 
         if (rankedUp) {
           sounds.rankUp()
@@ -540,8 +578,10 @@ export const useStore = create<SystemStore>()(
         }))
         setTimeout(() => set((s) => ({ xpGainEvents: s.xpGainEvents.filter((e) => e.id !== eventId) })), 1600)
 
-        const { newProfile, leveledUp, rankedUp } = applyXp(profile, xpGained)
-        set({ profile: newProfile })
+        const { newProfile: profileWithXp, leveledUp, rankedUp } = applyXp(profile, xpGained)
+        const { boss: newBoss, defeated: bossJustDefeated, newProfile } = hitBoss(get().boss, profileWithXp)
+        set({ profile: newProfile, boss: newBoss })
+        if (bossJustDefeated) { sounds.bossDefeated(); haptic([100, 50, 100, 50, 200]); set({ bossDefeatedEvent: true }) }
 
         if (rankedUp) {
           sounds.rankUp()
@@ -633,6 +673,7 @@ export const useStore = create<SystemStore>()(
       clearLuckyStrikeEvent: () => set({ luckyStrikeEvent: null }),
       clearFreezeUsedEvent: () => set({ freezeUsedEvent: false }),
       clearFreezeEarnedEvent: () => set({ freezeEarnedEvent: false }),
+      clearBossDefeatedEvent: () => set({ bossDefeatedEvent: false }),
 
       undoCompletion: (completedId: string) => {
         const s = get()
@@ -770,6 +811,12 @@ export const useStore = create<SystemStore>()(
           state.dailyChallenge = { text: getDailyChallenge(todayStr), completed: false, date: todayStr }
         }
 
+        // Weekly boss — reset each week
+        if (!state.boss || state.boss.weekStart !== weekStart) {
+          const bc = getWeeklyBoss(weekStart)
+          state.boss = { ...bc, maxHp: bc.hp, weekStart, hits: 0, defeated: false, bonusApplied: false }
+        }
+
         // XP penalty — if enabled and user missed habits yesterday
         if (state.xpPenaltyEnabled) {
           const yesterday = new Date(todayStr)
@@ -843,6 +890,10 @@ export const useStore = create<SystemStore>()(
         if (state.streakFreezes === undefined) state.streakFreezes = 0
         if (state.freezeUsedEvent === undefined) state.freezeUsedEvent = false
         if (state.freezeEarnedEvent === undefined) state.freezeEarnedEvent = false
+        if (state.soundEnabled === undefined) state.soundEnabled = true
+        if (state.bossDefeatedEvent === undefined) state.bossDefeatedEvent = false
+        // Sync sound module with persisted setting
+        setSoundEnabled(state.soundEnabled)
         // Migrate existing quests to include emoji field
         state.quests = (state.quests || []).map(q => q.emoji ? q : { ...q, emoji: '✅' })
       },

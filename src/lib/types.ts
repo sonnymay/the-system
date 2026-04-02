@@ -183,6 +183,31 @@ export function getDailyMotivationalQuote(dateStr: string): string {
   return MOTIVATIONAL_QUOTES[hash % MOTIVATIONAL_QUOTES.length]
 }
 
+export interface BossConfig {
+  name: string
+  emoji: string
+  hp: number
+  xpReward: number
+  description: string
+}
+
+export const WEEKLY_BOSSES: BossConfig[] = [
+  { name: 'The Sloth King',      emoji: '🦥', hp: 5,  xpReward: 200, description: 'Destroyer of routines' },
+  { name: 'Chaos Goblin',        emoji: '👺', hp: 7,  xpReward: 300, description: 'Master of distraction' },
+  { name: 'The Procrastinator',  emoji: '⏰', hp: 6,  xpReward: 250, description: 'King of "tomorrow"' },
+  { name: 'Shadow Doubt',        emoji: '🌑', hp: 8,  xpReward: 350, description: 'Lurks in your mind' },
+  { name: 'Iron Slump',          emoji: '⛓️', hp: 10, xpReward: 500, description: 'Breaks your momentum' },
+  { name: 'The Void',            emoji: '🕳️', hp: 9,  xpReward: 450, description: 'Consumes your will' },
+  { name: 'Burnout Drake',       emoji: '🐲', hp: 12, xpReward: 600, description: 'Drains your energy' },
+]
+
+export function getWeeklyBoss(weekStart: string): BossConfig {
+  const hash = weekStart.split('').reduce((acc, c, i) => acc + c.charCodeAt(0) * (i + 3), 0)
+  return WEEKLY_BOSSES[hash % WEEKLY_BOSSES.length]
+}
+
+export const LEVEL_MILESTONES = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]
+
 export interface Achievement {
   id: string
   name: string
