@@ -3,7 +3,7 @@ import { AnimatePresence, motion, Reorder, useDragControls } from 'framer-motion
 import { Flame, GripVertical } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { LocalQuest } from '../store/useStore'
-import { QUEST_XP, DAILY_CHALLENGE_XP } from '../lib/types'
+import { QUEST_XP, DAILY_CHALLENGE_XP, getStreakMultiplier } from '../lib/types'
 import { useTheme } from '../lib/theme'
 
 const HABIT_EMOJIS = [
@@ -113,6 +113,7 @@ function QuestRow({ quest, onComplete, onDelete }: {
   const [editText, setEditText] = useState(quest.quest_text)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [justCompleted, setJustCompleted] = useState(false)
+  const [showStats, setShowStats] = useState(false)
 
   const holdHandlers = useHoldPress(() => {
     setEditText(quest.quest_text)
@@ -226,13 +227,53 @@ function QuestRow({ quest, onComplete, onDelete }: {
 
           <span className="text-xs font-medium flex-shrink-0" style={{ color: t.textMuted }}>+{QUEST_XP}</span>
 
-          {quest.current_streak > 1 && (
-            <div className="flex items-center gap-0.5 flex-shrink-0">
-              <Flame size={11} className="text-orange-400" />
-              <span className="text-xs font-semibold text-orange-400">{quest.current_streak}</span>
-            </div>
-          )}
+          {/* Streak badge — tap to see stats */}
+          <button
+            onClick={() => setShowStats((v) => !v)}
+            className="flex items-center gap-0.5 flex-shrink-0 rounded-lg px-1 py-0.5 transition-colors"
+            style={{ background: showStats ? t.border : 'transparent' }}
+            title="Streak stats"
+          >
+            {quest.current_streak > 0 ? (
+              <>
+                <Flame size={11} className="text-orange-400" />
+                <span className="text-xs font-semibold text-orange-400">{quest.current_streak}</span>
+              </>
+            ) : (
+              <span className="text-xs" style={{ color: t.textMuted }}>—</span>
+            )}
+          </button>
         </div>
+
+        {/* Stats popup */}
+        <AnimatePresence>
+          {showStats && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <div className="px-4 py-2.5 border-b grid grid-cols-3 gap-2" style={{ borderColor: t.border, background: t.cardAlt }}>
+                <div className="text-center">
+                  <p className="text-base font-black" style={{ color: '#f97316' }}>{quest.current_streak}</p>
+                  <p className="text-xs" style={{ color: t.textMuted }}>Current 🔥</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-black" style={{ color: '#6366f1' }}>{quest.best_streak ?? quest.current_streak}</p>
+                  <p className="text-xs" style={{ color: t.textMuted }}>Best 🏆</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-black" style={{ color: '#10b981' }}>
+                    {getStreakMultiplier(quest.current_streak) > 1 ? `${getStreakMultiplier(quest.current_streak)}×` : '—'}
+                  </p>
+                  <p className="text-xs" style={{ color: t.textMuted }}>Bonus ⚡</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </SwipeableRow>
     </Reorder.Item>
   )

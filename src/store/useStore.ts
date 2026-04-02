@@ -29,6 +29,7 @@ export interface LocalQuest {
   quest_text: string
   emoji: string
   current_streak: number
+  best_streak: number
   last_completed_at: string | null
   completed_today: boolean
 }
@@ -243,6 +244,7 @@ interface SystemStore {
   reorderQuests: (newOrder: LocalQuest[]) => void
   updateQuestText: (questId: string, newText: string) => void
   updateQuestEmoji: (questId: string, emoji: string) => void
+  updateTaskTitle: (taskId: string, title: string) => void
 
   completeDailyChallenge: (x: number, y: number) => void
 
@@ -421,7 +423,7 @@ export const useStore = create<SystemStore>()(
         set((s) => ({
           quests: [...s.quests, {
             id: crypto.randomUUID(), quest_text: text, emoji: '✅',
-            current_streak: 0, last_completed_at: null, completed_today: false,
+            current_streak: 0, best_streak: 0, last_completed_at: null, completed_today: false,
           }],
         }))
       },
@@ -468,7 +470,7 @@ export const useStore = create<SystemStore>()(
 
         const updated = quests.map((q) =>
           q.id === questId
-            ? { ...q, completed_today: true, current_streak: newStreak, last_completed_at: todayStr }
+            ? { ...q, completed_today: true, current_streak: newStreak, best_streak: Math.max(q.best_streak ?? 0, newStreak), last_completed_at: todayStr }
             : q
         )
         const questEntry: CompletedTask = {
@@ -539,6 +541,11 @@ export const useStore = create<SystemStore>()(
       updateQuestEmoji: (questId, emoji) =>
         set((s) => ({
           quests: s.quests.map((q) => q.id === questId ? { ...q, emoji } : q),
+        })),
+
+      updateTaskTitle: (taskId, title) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) => t.id === taskId ? { ...t, title } : t),
         })),
 
       completeDailyChallenge: (x, y) => {
@@ -883,7 +890,10 @@ export const useStore = create<SystemStore>()(
         // Init new fields for existing users
         if (state.dailyActivity === undefined) state.dailyActivity = {}
         if (state.tutorialDone === undefined) state.tutorialDone = true // don't show tutorial to existing users
-        if (state.darkMode === undefined) state.darkMode = false
+        // Auto dark mode on first install — follow OS preference
+        if (state.darkMode === undefined) {
+          state.darkMode = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+        }
         if (state.xpPenaltyEnabled === undefined) state.xpPenaltyEnabled = false
         if (state.loginStreak === undefined) state.loginStreak = 0
         if (state.lastLoginDate === undefined) state.lastLoginDate = null
@@ -894,8 +904,12 @@ export const useStore = create<SystemStore>()(
         if (state.bossDefeatedEvent === undefined) state.bossDefeatedEvent = false
         // Sync sound module with persisted setting
         setSoundEnabled(state.soundEnabled)
-        // Migrate existing quests to include emoji field
-        state.quests = (state.quests || []).map(q => q.emoji ? q : { ...q, emoji: '✅' })
+        // Migrate existing quests — add emoji and best_streak if missing
+        state.quests = (state.quests || []).map(q => ({
+          ...q,
+          emoji: q.emoji ?? '✅',
+          best_streak: q.best_streak ?? q.current_streak,
+        }))
       },
     }
   )
