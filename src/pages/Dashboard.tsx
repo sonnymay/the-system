@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Moon, Sun } from 'lucide-react'
 import HunterCard from '../components/HunterCard'
@@ -21,6 +22,7 @@ import LoginBonusToast from '../components/LoginBonusToast'
 import FreezeToast from '../components/FreezeToast'
 import BossBattle from '../components/BossBattle'
 import BossDefeatedToast from '../components/BossDefeatedToast'
+import ComebackToast from '../components/ComebackToast'
 import { useTheme } from '../lib/theme'
 import { useStore } from '../store/useStore'
 
@@ -45,10 +47,43 @@ function PenaltyToast() {
   )
 }
 
+function useMidnightReminder() {
+  const notifyBeforeMidnight = useStore((s) => s.notifyBeforeMidnight)
+  const quests = useStore((s) => s.quests)
+  const notifiedRef = useRef(false)
+
+  useEffect(() => {
+    if (!notifyBeforeMidnight) { notifiedRef.current = false; return }
+
+    function check() {
+      if (notifiedRef.current) return
+      const now = new Date()
+      const midnight = new Date(); midnight.setHours(24, 0, 0, 0)
+      const msLeft = midnight.getTime() - now.getTime()
+      const incomplete = quests.filter((q) => !q.completed_today).length
+      // Notify at 2h remaining if habits not done
+      if (msLeft <= 7200000 && msLeft > 3540000 && incomplete > 0) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          notifiedRef.current = true
+          new Notification('⚠️ Habits incomplete!', {
+            body: `${incomplete} habit${incomplete > 1 ? 's' : ''} left — ${Math.floor(msLeft / 3600000)}h until midnight.`,
+            icon: '/favicon.ico',
+          })
+        }
+      }
+    }
+
+    check()
+    const id = setInterval(check, 60000)
+    return () => clearInterval(id)
+  }, [notifyBeforeMidnight, quests])
+}
+
 export default function Dashboard() {
   const t = useTheme()
   const darkMode = useStore((s) => s.darkMode)
   const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+  useMidnightReminder()
 
   return (
     <>
@@ -66,6 +101,7 @@ export default function Dashboard() {
       <LoginBonusToast />
       <FreezeToast />
       <BossDefeatedToast />
+      <ComebackToast />
       <XpFloats />
 
       <div className="min-h-screen" style={{ background: t.bg }}>

@@ -22,6 +22,7 @@ export interface LocalTask {
   difficulty: string
   xp_value: number
   created_at: string
+  due_date?: string   // YYYY-MM-DD, optional
 }
 
 export interface LocalQuest {
@@ -195,6 +196,7 @@ interface SystemStore {
   darkMode: boolean
   soundEnabled: boolean
   xpPenaltyEnabled: boolean
+  notifyBeforeMidnight: boolean
 
   // Weekly Boss Battle
   boss: BossState
@@ -222,8 +224,9 @@ interface SystemStore {
   undoSnapshot: UndoToastData | null
   loginBonusEvent: number | null            // XP gained from daily login
   comboEvent: { count: number; bonusXp: number } | null
-  luckyStrikeEvent: number | null           // bonus XP from lucky strike
+  luckyStrikeEvent: number | null
   bossDefeatedEvent: boolean
+  comebackEvent: boolean
 
   // Actions
   updateUsername: (name: string) => void
@@ -233,8 +236,10 @@ interface SystemStore {
   toggleDarkMode: () => void
   toggleSound: () => void
   toggleXpPenalty: () => void
+  toggleNotifyBeforeMidnight: () => void
+  clearComebackEvent: () => void
 
-  addTask: (title: string, difficulty: string) => void
+  addTask: (title: string, difficulty: string, due_date?: string) => void
   completeTask: (taskId: string, x: number, y: number) => void
   deleteTask: (taskId: string) => void
 
@@ -301,6 +306,8 @@ export const useStore = create<SystemStore>()(
       comboEvent: null,
       luckyStrikeEvent: null,
       bossDefeatedEvent: false,
+      comebackEvent: false,
+      notifyBeforeMidnight: false,
       streakFreezes: 0,
       freezeUsedEvent: false,
       freezeEarnedEvent: false,
@@ -312,6 +319,8 @@ export const useStore = create<SystemStore>()(
       toggleDarkMode: () => set((s) => ({ darkMode: !s.darkMode })),
       toggleSound: () => set((s) => { setSoundEnabled(!s.soundEnabled); return { soundEnabled: !s.soundEnabled } }),
       toggleXpPenalty: () => set((s) => ({ xpPenaltyEnabled: !s.xpPenaltyEnabled })),
+      toggleNotifyBeforeMidnight: () => set((s) => ({ notifyBeforeMidnight: !s.notifyBeforeMidnight })),
+      clearComebackEvent: () => set({ comebackEvent: false }),
 
       updateUsername: (name) =>
         set((s) => ({ profile: { ...s.profile, username: name } })),
@@ -335,11 +344,12 @@ export const useStore = create<SystemStore>()(
         }))
       },
 
-      addTask: (title, difficulty) => {
+      addTask: (title, difficulty, due_date?) => {
         const task: LocalTask = {
           id: crypto.randomUUID(), title, difficulty,
           xp_value: XP_VALUES[difficulty as keyof typeof XP_VALUES],
           created_at: new Date().toISOString(),
+          ...(due_date ? { due_date } : {}),
         }
         set((s) => ({ tasks: [task, ...s.tasks] }))
       },
@@ -796,6 +806,8 @@ export const useStore = create<SystemStore>()(
             }
             return { ...q, completed_today: false }
           })
+          // Show comeback toast if any streaks were broken
+          if (questsWithBrokenStreaks.length > 0) state.comebackEvent = true
         }
         state.isPerfectDay = state.quests.length > 0 && state.quests.every((q) => q.completed_today)
         void freezeUsed // used above, suppressing lint
@@ -902,6 +914,8 @@ export const useStore = create<SystemStore>()(
         if (state.freezeEarnedEvent === undefined) state.freezeEarnedEvent = false
         if (state.soundEnabled === undefined) state.soundEnabled = true
         if (state.bossDefeatedEvent === undefined) state.bossDefeatedEvent = false
+        if (state.comebackEvent === undefined) state.comebackEvent = false
+        if (state.notifyBeforeMidnight === undefined) state.notifyBeforeMidnight = false
         // Sync sound module with persisted setting
         setSoundEnabled(state.soundEnabled)
         // Migrate existing quests — add emoji and best_streak if missing

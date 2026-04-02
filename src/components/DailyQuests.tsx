@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, Reorder, useDragControls } from 'framer-motion'
-import { Flame, GripVertical } from 'lucide-react'
+import { Bell, BellOff, Flame, GripVertical } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { LocalQuest } from '../store/useStore'
 import { QUEST_XP, DAILY_CHALLENGE_XP, getStreakMultiplier } from '../lib/types'
@@ -289,6 +289,8 @@ export default function DailyQuests() {
   const completeDailyChallenge = useStore((s) => s.completeDailyChallenge)
   const isPerfectDay = useStore((s) => s.isPerfectDay)
   const streakFreezes = useStore((s) => s.streakFreezes)
+  const notifyBeforeMidnight = useStore((s) => s.notifyBeforeMidnight)
+  const toggleNotifyBeforeMidnight = useStore((s) => s.toggleNotifyBeforeMidnight)
   const t = useTheme()
 
   const [newText, setNewText] = useState('')
@@ -296,6 +298,13 @@ export default function DailyQuests() {
   const doneCount = quests.filter((q) => q.completed_today).length
   const { label: timeLabel, urgent: timeUrgent } = useTimeUntilMidnight()
   const streakAtRisk = timeUrgent && doneCount < quests.length && quests.length > 0
+
+  async function handleBellToggle() {
+    if (!notifyBeforeMidnight && 'Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission()
+    }
+    toggleNotifyBeforeMidnight()
+  }
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -320,12 +329,17 @@ export default function DailyQuests() {
         <div className="flex items-center gap-2">
           <p className="font-semibold" style={{ color: t.text }}>Daily Habits</p>
           {streakFreezes > 0 && (
-            <div className="flex items-center gap-0.5" title={`${streakFreezes} Streak Freeze${streakFreezes > 1 ? 's' : ''} — protects your streak if you miss a day`}>
+            <div className="flex items-center gap-0.5" title={`${streakFreezes} Streak Freeze${streakFreezes > 1 ? 's' : ''}`}>
               {Array.from({ length: streakFreezes }).map((_, i) => (
                 <span key={i} className="text-sm">🛡️</span>
               ))}
             </div>
           )}
+          <button onClick={handleBellToggle} title={notifyBeforeMidnight ? 'Reminder on — tap to disable' : 'Remind me before midnight'}
+            className="w-6 h-6 flex items-center justify-center rounded-lg transition-colors"
+            style={{ color: notifyBeforeMidnight ? '#f59e0b' : t.textMuted }}>
+            {notifyBeforeMidnight ? <Bell size={13} /> : <BellOff size={13} />}
+          </button>
         </div>
         <div className="flex items-center gap-2 ml-auto">
           {streakAtRisk && (
