@@ -2,6 +2,52 @@ export type HunterRank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S'
 
 export type TaskDifficulty = 'poring' | 'orc' | 'drake' | 'mvp'
 
+export type CharacterClass = 'warrior' | 'scholar' | 'ranger' | 'mage' | 'assassin'
+
+export interface ClassConfig {
+  id: CharacterClass
+  name: string
+  emoji: string
+  description: string
+  bonusLine: string
+  color: string
+}
+
+export const CHARACTER_CLASSES: ClassConfig[] = [
+  { id: 'warrior',  name: 'Warrior',  emoji: '⚔️',  color: '#ef4444', description: 'Thrives under pressure',      bonusLine: '+15% XP on Hard & Epic tasks'     },
+  { id: 'scholar',  name: 'Scholar',  emoji: '📖',  color: '#3b82f6', description: 'Turns knowledge into power',   bonusLine: '+20% XP on Daily Challenges'      },
+  { id: 'ranger',   name: 'Ranger',   emoji: '🏹',  color: '#22c55e', description: 'Discipline over motivation',   bonusLine: '+15% XP on all habit completions' },
+  { id: 'mage',     name: 'Mage',     emoji: '✨',  color: '#a855f7', description: 'Commands hidden forces',       bonusLine: 'Lucky Strike chance: 18% vs 12%'  },
+  { id: 'assassin', name: 'Assassin', emoji: '🗡️', color: '#6366f1', description: 'Speed is the only advantage',  bonusLine: 'Combo window: 12s instead of 8s'  },
+]
+
+// Level tier titles — which tier you display at each level range
+export interface LevelTier { title: string; minLevel: number; stars: number }
+
+export const LEVEL_TIERS: LevelTier[] = [
+  { minLevel: 1,  title: 'Initiate',   stars: 1 },
+  { minLevel: 5,  title: 'Adept',      stars: 2 },
+  { minLevel: 11, title: 'Apprentice', stars: 1 },
+  { minLevel: 16, title: 'Journeyman', stars: 2 },
+  { minLevel: 21, title: 'Warrior',    stars: 1 },
+  { minLevel: 31, title: 'Veteran',    stars: 2 },
+  { minLevel: 41, title: 'Champion',   stars: 1 },
+  { minLevel: 51, title: 'Elite',      stars: 2 },
+  { minLevel: 61, title: 'Berserker',  stars: 1 },
+  { minLevel: 71, title: 'Warlord',    stars: 2 },
+  { minLevel: 81, title: 'Shadow',     stars: 1 },
+  { minLevel: 91, title: 'Monarch',    stars: 3 },
+]
+
+export function getLevelTier(level: number): LevelTier {
+  let current = LEVEL_TIERS[0]
+  for (const tier of LEVEL_TIERS) {
+    if (level >= tier.minLevel) current = tier
+    else break
+  }
+  return current
+}
+
 export interface UserProfile {
   id: string
   username: string
