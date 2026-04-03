@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Share2, X } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { HunterRank } from '../lib/types'
-import { RANK_CONFIG, getLevelProgress, getStreakMultiplier, ACHIEVEMENTS, getDailyMotivationalQuote } from '../lib/types'
+import { RANK_CONFIG, getLevelProgress, getStreakMultiplier, ACHIEVEMENTS, getDailyMotivationalQuote, getLevelTier, CHARACTER_CLASSES } from '../lib/types'
 import { shareHunterCard } from '../lib/shareCard'
 import { useTheme } from '../lib/theme'
+import ClassSelectModal from './ClassSelectModal'
 
 const RANK_IMAGES: Partial<Record<HunterRank, string>> = {
   E: '/ranks/e-rank.png',
@@ -30,6 +31,7 @@ export default function HunterCard() {
   const [nameInput, setNameInput] = useState(profile.username)
   const [sharing, setSharing] = useState(false)
   const [showRankInfo, setShowRankInfo] = useState(false)
+  const [showClassSelect, setShowClassSelect] = useState(false)
 
   const rank = profile.hunter_rank as HunterRank
   const rc = RANK_CONFIG[rank]
@@ -43,6 +45,8 @@ export default function HunterCard() {
   const nextRankIdx = RANKS.indexOf(rank) + 1
   const nextRank = nextRankIdx < RANKS.length ? RANKS[nextRankIdx] : null
   const levelsToRankUp = nextRank ? rc.levels[1] - profile.level + 1 : null
+  const levelTier = getLevelTier(profile.level)
+  const classConfig = profile.characterClass ? CHARACTER_CLASSES.find((c) => c.id === profile.characterClass) : null
 
   // Compute unlocked achievements
   const unlockedAchievements = ACHIEVEMENTS.filter((a) => {
@@ -153,7 +157,10 @@ export default function HunterCard() {
                   style={{ color: t.textMuted }}>✏️</span>
               </button>
             )}
-            <p className="text-xs" style={{ color: t.textMuted }}>{rc.title} · Lv {profile.level}</p>
+            <p className="text-xs" style={{ color: t.textMuted }}>
+              {rc.title} · Lv {profile.level}
+              {' '}<span style={{ color: t.textSub }}>· {levelTier.title}</span>
+            </p>
           </div>
 
           {/* Share button */}
@@ -163,6 +170,27 @@ export default function HunterCard() {
             <Share2 size={13} style={{ color: t.textMuted }} />
           </button>
         </div>
+
+        {/* Class badge / CTA */}
+        {classConfig ? (
+          <button
+            onClick={() => setShowClassSelect(true)}
+            className="flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ background: classConfig.color + '18', color: classConfig.color }}
+          >
+            <span>{classConfig.emoji}</span>
+            <span>{classConfig.name}</span>
+            <span className="opacity-60 font-normal ml-0.5">· {classConfig.bonusLine}</span>
+          </button>
+        ) : profile.level >= 10 ? (
+          <button
+            onClick={() => setShowClassSelect(true)}
+            className="flex items-center gap-1 mb-3 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all hover:opacity-90"
+            style={{ borderColor: rc.color, color: rc.color, background: rc.color + '10' }}
+          >
+            ✦ Choose your class ↗
+          </button>
+        ) : null}
 
         {/* XP bar */}
         <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: t.border }}>
@@ -216,6 +244,8 @@ export default function HunterCard() {
           </p>
         </div>
       </div>
+
+      <ClassSelectModal open={showClassSelect} onClose={() => setShowClassSelect(false)} />
 
       {/* Rank Info Modal */}
       <AnimatePresence>

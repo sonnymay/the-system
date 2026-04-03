@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { HunterRank } from '../lib/types'
+import type { HunterRank, CharacterClass } from '../lib/types'
 import {
   XP_VALUES, QUEST_XP, DAILY_CHALLENGE_XP,
   getRankForLevel, getXpForLevel, getDailyChallenge, getStreakMultiplier, getWeeklyBoss,
@@ -14,6 +14,7 @@ export interface LocalProfile {
   current_xp: number
   total_xp: number
   total_tasks_completed: number
+  characterClass: CharacterClass | null
 }
 
 export interface LocalTask {
@@ -169,6 +170,7 @@ function updateActivity(
 const DEFAULT_PROFILE: LocalProfile = {
   username: 'Hunter', hunter_rank: 'E', level: 1,
   current_xp: 0, total_xp: 0, total_tasks_completed: 0,
+  characterClass: null,
 }
 
 const DEFAULT_WEEKLY: WeeklyStats = {
@@ -227,6 +229,7 @@ interface SystemStore {
   luckyStrikeEvent: number | null
   bossDefeatedEvent: boolean
   comebackEvent: boolean
+  classUnlockEvent: boolean
 
   // Actions
   updateUsername: (name: string) => void
@@ -238,6 +241,8 @@ interface SystemStore {
   toggleXpPenalty: () => void
   toggleNotifyBeforeMidnight: () => void
   clearComebackEvent: () => void
+  setCharacterClass: (cls: CharacterClass) => void
+  clearClassUnlockEvent: () => void
 
   addTask: (title: string, difficulty: string, due_date?: string) => void
   completeTask: (taskId: string, x: number, y: number) => void
@@ -307,6 +312,7 @@ export const useStore = create<SystemStore>()(
       luckyStrikeEvent: null,
       bossDefeatedEvent: false,
       comebackEvent: false,
+      classUnlockEvent: false,
       notifyBeforeMidnight: false,
       streakFreezes: 0,
       freezeUsedEvent: false,
@@ -321,6 +327,14 @@ export const useStore = create<SystemStore>()(
       toggleXpPenalty: () => set((s) => ({ xpPenaltyEnabled: !s.xpPenaltyEnabled })),
       toggleNotifyBeforeMidnight: () => set((s) => ({ notifyBeforeMidnight: !s.notifyBeforeMidnight })),
       clearComebackEvent: () => set({ comebackEvent: false }),
+      clearClassUnlockEvent: () => set({ classUnlockEvent: false }),
+      setCharacterClass: (cls) => set((s) => ({
+        profile: { ...s.profile, characterClass: cls },
+        classUnlockEvent: false,
+        profileSlots: s.profileSlots.map(slot =>
+          slot.id === s.activeSlotId ? { ...slot, profile: { ...slot.profile, characterClass: cls } } : slot
+        ),
+      })),
 
       updateUsername: (name) =>
         set((s) => ({ profile: { ...s.profile, username: name } })),
@@ -361,19 +375,25 @@ export const useStore = create<SystemStore>()(
 
         const undoSnap: UndoToastData = { label: `"${task.title}"`, completedId: task.id }
 
+        const cls = profile.characterClass
         const maxStreak = quests.length > 0 ? Math.max(...quests.map(q => q.current_streak)) : 0
         const multiplier = getStreakMultiplier(maxStreak)
         const baseXp = isPerfectDay ? task.xp_value * 2 : task.xp_value
         let xpGained = Math.round(baseXp * multiplier)
+        // Warrior: +15% on Hard (drake) & Epic (mvp)
+        if (cls === 'warrior' && (task.difficulty === 'drake' || task.difficulty === 'mvp')) {
+          xpGained = Math.round(xpGained * 1.15)
+        }
 
-        // Lucky Strike — 12% chance for +50% bonus
-        const isLucky = Math.random() < 0.12
+        // Lucky Strike — Mage: 18%, others: 12%
+        const isLucky = Math.random() < (cls === 'mage' ? 0.18 : 0.12)
         const luckyBonus = isLucky ? Math.round(xpGained * 0.5) : 0
         xpGained += luckyBonus
 
-        // Combo tracking
+        // Combo tracking — Assassin: 12s window, others: 8s
         const now = Date.now()
-        if (now - lastCompletionTime < 8000) { comboCount++ } else { comboCount = 1 }
+        const comboWindow = cls === 'assassin' ? 12000 : 8000
+        if (now - lastCompletionTime < comboWindow) { comboCount++ } else { comboCount = 1 }
         lastCompletionTime = now
         const comboBonus = comboCount >= 2 ? (comboCount === 2 ? 10 : comboCount === 3 ? 20 : 30) : 0
         xpGained += comboBonus
@@ -421,6 +441,9 @@ export const useStore = create<SystemStore>()(
           haptic([50, 30, 50, 30, 100])
           set({ levelUpEvent: newProfile.level })
         }
+        if (leveledUp && newProfile.level >= 10 && !newProfile.characterClass) {
+          set({ classUnlockEvent: true })
+        }
 
         set({ undoSnapshot: undoSnap })
       },
@@ -448,23 +471,23 @@ export const useStore = create<SystemStore>()(
         haptic(10)
         sounds.habitComplete()
 
+        const cls = profile.characterClass
         const maxStreak = Math.max(...quests.map(q => q.current_streak))
         const multiplier = getStreakMultiplier(maxStreak)
         const baseXp = isPerfectDay ? QUEST_XP * 2 : QUEST_XP
         let xpGained = Math.round(baseXp * multiplier)
+        // Ranger: +15% XP on all habit completions
+        if (cls === 'ranger') xpGained = Math.round(xpGained * 1.15)
 
-        // Lucky Strike — 12% chance for +50% bonus
-        const isLucky = Math.random() < 0.12
+        // Lucky Strike — Mage: 18%, others: 12%
+        const isLucky = Math.random() < (cls === 'mage' ? 0.18 : 0.12)
         const luckyBonus = isLucky ? Math.round(xpGained * 0.5) : 0
         xpGained += luckyBonus
 
-        // Combo — fast successive completions
+        // Combo — Assassin: 12s window, others: 8s
         const now = Date.now()
-        if (now - lastCompletionTime < 8000) {
-          comboCount++
-        } else {
-          comboCount = 1
-        }
+        const comboWindow = cls === 'assassin' ? 12000 : 8000
+        if (now - lastCompletionTime < comboWindow) { comboCount++ } else { comboCount = 1 }
         lastCompletionTime = now
         const comboBonus = comboCount >= 2 ? (comboCount === 2 ? 10 : comboCount === 3 ? 20 : 30) : 0
         xpGained += comboBonus
@@ -531,6 +554,10 @@ export const useStore = create<SystemStore>()(
           set({ levelUpEvent: newProfile.level })
         }
 
+        if (leveledUp && newProfile.level >= 10 && !newProfile.characterClass) {
+          set({ classUnlockEvent: true })
+        }
+
         if (STREAK_MILESTONES.includes(newStreak)) {
           set({ streakMilestoneEvent: newStreak })
         }
@@ -567,10 +594,13 @@ export const useStore = create<SystemStore>()(
         haptic([10, 50, 10])
         sounds.taskComplete()
 
+        const cls = profile.characterClass
         const maxStreak = quests.length > 0 ? Math.max(...quests.map(q => q.current_streak)) : 0
         const multiplier = getStreakMultiplier(maxStreak)
         const baseXp = isPerfectDay ? DAILY_CHALLENGE_XP * 2 : DAILY_CHALLENGE_XP
-        const xpGained = Math.round(baseXp * multiplier)
+        let xpGained = Math.round(baseXp * multiplier)
+        // Scholar: +20% XP on daily challenges
+        if (cls === 'scholar') xpGained = Math.round(xpGained * 1.20)
         const eventId = xpEventId++
 
         const challengeEntry: CompletedTask = {
@@ -608,6 +638,9 @@ export const useStore = create<SystemStore>()(
           sounds.levelUp()
           haptic([50, 30, 50, 30, 100])
           set({ levelUpEvent: newProfile.level })
+        }
+        if (leveledUp && newProfile.level >= 10 && !newProfile.characterClass) {
+          set({ classUnlockEvent: true })
         }
 
         set({ undoSnapshot: undoSnap })
@@ -916,6 +949,8 @@ export const useStore = create<SystemStore>()(
         if (state.bossDefeatedEvent === undefined) state.bossDefeatedEvent = false
         if (state.comebackEvent === undefined) state.comebackEvent = false
         if (state.notifyBeforeMidnight === undefined) state.notifyBeforeMidnight = false
+        if (state.classUnlockEvent === undefined) state.classUnlockEvent = false
+        if (state.profile.characterClass === undefined) state.profile.characterClass = null
         // Sync sound module with persisted setting
         setSoundEnabled(state.soundEnabled)
         // Migrate existing quests — add emoji and best_streak if missing

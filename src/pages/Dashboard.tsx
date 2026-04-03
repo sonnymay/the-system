@@ -23,6 +23,7 @@ import FreezeToast from '../components/FreezeToast'
 import BossBattle from '../components/BossBattle'
 import BossDefeatedToast from '../components/BossDefeatedToast'
 import ComebackToast from '../components/ComebackToast'
+import ClassSelectModal from '../components/ClassSelectModal'
 import { useTheme } from '../lib/theme'
 import { useStore } from '../store/useStore'
 
@@ -83,6 +84,8 @@ export default function Dashboard() {
   const t = useTheme()
   const darkMode = useStore((s) => s.darkMode)
   const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+  const classUnlockEvent = useStore((s) => s.classUnlockEvent)
+  const clearClassUnlockEvent = useStore((s) => s.clearClassUnlockEvent)
   useMidnightReminder()
 
   return (
@@ -102,6 +105,7 @@ export default function Dashboard() {
       <FreezeToast />
       <BossDefeatedToast />
       <ComebackToast />
+      <ClassSelectModal open={classUnlockEvent} onClose={clearClassUnlockEvent} />
       <XpFloats />
 
       <div className="min-h-screen" style={{ background: t.bg }}>
